@@ -77,7 +77,7 @@ const ProductSection = () => {
       </div>
 
       {/* --- SCROLLABLE PRODUCTS CONTAINER --- */}
-      {/* The padding left is applied to a wrapper so it doesn't mess with the mathematical loop width */}
+      
       <div className="pl-6">
         <div 
           ref={scrollRef}

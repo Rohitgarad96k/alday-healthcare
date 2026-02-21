@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Leaf, Droplet, Sun } from 'lucide-react';
-import { Link } from 'react-router-dom'; // 1. IMPORT LINK
+import { Link } from 'react-router-dom'; 
 import { ingredients } from '../data'; // Import data
 
 // Map string keys from data.js to actual React Components

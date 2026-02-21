@@ -7,7 +7,7 @@ const FoundersCorner = () => {
   return (
     <div className="bg-white font-sans text-gray-900">
      
-      {/* --- 1. HERO SECTION (Editorial Style) --- */}
+      {/*1. HERO SECTION */}
       <section className="relative pt-20 pb-20 px-6 overflow-hidden">
         <div className="max-w-[1300px] mx-auto flex flex-col md:flex-row items-center gap-16">
           
@@ -50,7 +50,7 @@ const FoundersCorner = () => {
         </div>
       </section>
 
-      {/* --- 2. IMPACT METRICS (Stat Bar) --- */}
+      {/* 2. IMPACT METRICS  */}
       <section className="bg-black text-white py-16">
          <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-gray-800">
             <div>

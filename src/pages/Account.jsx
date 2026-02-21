@@ -297,10 +297,7 @@ const Account = () => {
       {/* Main Content Area */}
       <div className="max-w-[1200px] mx-auto px-6 py-12 md:py-16 flex flex-col md:flex-row gap-10 items-start">
         
-        {/* =========================================
-            SIDEBAR NAVIGATION (PERFECT STICKY)
-        ========================================== */}
-        {/* CRITICAL FIX: Added md:sticky md:top-32 and self-start to the column wrapper */}
+        {/* SIDEBAR NAVIGATION (PERFECT STICKY) */}
         <div className="w-full md:w-1/4 md:sticky md:top-32 self-start z-10">
           <div className="bg-white border border-gray-200 rounded-sm overflow-hidden flex flex-row overflow-x-auto md:flex-col hide-scrollbar shadow-sm">
             

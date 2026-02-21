@@ -8,7 +8,6 @@ const BestSellers = () => {
   const navigate = useNavigate();
   const { addToCart, setIsCartOpen } = useCart();
 
-  // PERFORMANCE BOOST: Caches the bestsellers so the browser doesn't calculate this on every scroll/render
   const bestSellers = useMemo(() => {
     // Assuming the first 4 products in your data are bestsellers for this example
     return products.slice(0, 4);
@@ -50,7 +49,6 @@ const BestSellers = () => {
                   </div>
                 )}
 
-                {/* PERFORMANCE FIX: decoding="async" prevents visual lag */}
                 <img
                   src={product.image}
                   alt={product.name}

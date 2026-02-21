@@ -94,9 +94,8 @@ const DermaAnalyser = () => {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-gray-900">
 
-      {/* =========================================
-          VIEW 1: LANDING PAGE (Matches Image)
-         ========================================= */}
+      {/* VIEW 1: LANDING PAGE (Matches Image) */}
+
       {view === 'landing' && (
         <div className="animate-fade-in">
           
@@ -226,10 +225,9 @@ const DermaAnalyser = () => {
 
         </div>
       )}
+      
+      {/* VIEW 2: QUIZ & RESULTS WIZARD */}
 
-      {/* =========================================
-          VIEW 2: QUIZ & RESULTS WIZARD
-         ========================================= */}
       {view === 'quiz' && (
         <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 max-w-[800px] mx-auto w-full">
            
@@ -286,7 +284,7 @@ const DermaAnalyser = () => {
              </div>
            )}
 
-           {/* --- STEP: ANALYZING --- */}
+           {/* STEP: ANALYZING  */}
            {step === 'analyzing' && (
              <div className="text-center animate-pulse">
                 <Loader2 size={48} className="animate-spin mx-auto mb-6 text-[#C5A059]" />
@@ -295,7 +293,7 @@ const DermaAnalyser = () => {
              </div>
            )}
 
-           {/* --- STEP: RESULTS --- */}
+           {/* STEP: RESULTS*/}
            {step === 'results' && (
              <div className="w-full animate-fade-in">
                 <div className="text-center mb-12">

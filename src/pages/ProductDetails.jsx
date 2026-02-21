@@ -111,8 +111,6 @@ const ProductDetails = () => {
   return (
     <div className="bg-white font-sans text-gray-900 pb-20 md:pb-0 relative">
       
-      {/* FORCE STICKY SUPPORT OVERRIDE: 
-          If any parent has overflow-x: hidden, sticky fails. This inline style guarantees it works. */}
       <style>{`
         .App, main, body, html {
           overflow-x: clip !important; 
@@ -175,9 +173,8 @@ const ProductDetails = () => {
           <span className="text-black font-bold border-b border-black pb-0.5">{product.name}</span>
         </div>
 
-        {/* =========================================
-            1. PRODUCT GALLERY (PERFECT STICKY)
-        ========================================== */}
+      {/* 1. PRODUCT GALLERY (PERFECT STICKY) */}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-start">
           
           {/* LEFT: STICKY COLUMN */}
@@ -377,9 +374,8 @@ const ProductDetails = () => {
          </div>
       </section>
 
-      {/* =========================================
-          2. REVIEWS SECTION (PERFECT STICKY)
-      ========================================== */}
+       {/* 2. REVIEWS SECTION  */}
+          
       <section className="py-20 md:py-24 bg-white border-t border-gray-100">
          <div className="max-w-[1200px] mx-auto px-6">
             <h2 className="text-2xl md:text-4xl font-serif font-bold tracking-tight mb-12 md:mb-16 text-center text-gray-900">Real Reviews</h2>

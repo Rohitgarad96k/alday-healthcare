@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // 1. IMPORT NAVIGATION HOOK
-import { heroSlides } from '../data'; // Import data from central file
+import { useNavigate } from 'react-router-dom'; 
+import { heroSlides } from '../data'; //1. Import data from central file
 
 const Hero = () => {
   const [current, setCurrent] = useState(0);

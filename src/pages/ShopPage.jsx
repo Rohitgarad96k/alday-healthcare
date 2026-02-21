@@ -168,9 +168,8 @@ const ShopPage = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 lg:gap-16 relative">
           
-          {/* =========================================
-              LEFT SIDEBAR (PERFECT STICKY & SPACIOUS)
-          ========================================== */}
+          {/* LEFT SIDEBAR  */}
+              
           <aside className={`fixed inset-0 z-[100] lg:z-10 lg:static bg-white lg:bg-transparent px-8 py-12 lg:p-0 lg:pr-6 transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] transform ${showMobileFilters ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:shadow-none'} w-full sm:w-[350px] lg:w-full lg:col-span-1`}>
              
              <div className="lg:sticky lg:top-32 max-h-[calc(100vh-100px)] overflow-y-auto flex flex-col hide-scrollbar pb-12 pr-2">
@@ -232,9 +231,8 @@ const ShopPage = () => {
              </div>
           </aside>
 
-          {/* =========================================
-              RIGHT: PRODUCT GRID AREA
-          ========================================== */}
+          {/* RIGHT: PRODUCT GRID AREA */}
+              
           <div className="lg:col-span-3 w-full">
             
             {/* Elegant Toolbar */}
@@ -272,7 +270,6 @@ const ShopPage = () => {
                 currentItems.map((product) => (
                   <div className="flex flex-col group/card h-full bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-sm transition-all duration-500 border border-transparent hover:border-gray-100 overflow-hidden" key={product.id}>
                     
-                    {/* Image Container with Extreme Speed */}
                     <div className="relative mb-5 bg-[#F4F4F4] aspect-[4/5] overflow-hidden">
                       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 translate-x-10 opacity-0 group-hover/card:translate-x-0 group-hover/card:opacity-100 transition-all duration-400 ease-out">
                          <button onClick={() => handleToggleWishlist(product)} className="bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors group/btn">

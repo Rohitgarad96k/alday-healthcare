@@ -5,8 +5,15 @@ export default function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    // Instantly snaps the view to the top whenever the URL changes
-    window.scrollTo(0, 0);
+    // The setTimeout(..., 0) pushes the scroll event to the end of the execution queue,
+    // ensuring the new page is fully painted in the DOM before scrolling.
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant' // 'instant' prevents weird scrolling animations on page load
+      });
+    }, 0);
   }, [pathname]);
 
   return null;

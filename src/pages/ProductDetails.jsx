@@ -6,7 +6,7 @@ import {
   MapPin, Play, X, Check
 } from 'lucide-react';
 
-import { products } from '../data'; 
+// REMOVED STATIC IMPORT: import { products } from '../data'; 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,17 +21,54 @@ const ProductDetails = () => {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { user } = useAuth();
   
-  // --- FIND PRODUCT & RELATED ---
-  const product = products.find((p) => p.id === id);
-  const relatedProducts = products.filter(p => p.id !== id).slice(0, 4);
-  const upsellProduct = products.find(p => p.id !== id) || products[0];
+  // --- BACKEND STATES ---
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // --- SCROLL TO TOP ON LOAD ---
+// --- FETCH PRODUCT DATA ---
   useEffect(() => {
+    const fetchProductData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch ALL products first
+        const allRes = await fetch('https://aldey-backend.vercel.app/api/product');
+        if (!allRes.ok) throw new Error('Failed to fetch products');
+        
+        const allData = await allRes.json();
+        const allProducts = allData.data || allData.products || [];
+        
+        // Find our specific product from the full list (checks all ID types!)
+        const foundProduct = allProducts.find(p => p._id === id || p.productId === id || String(p.id) === String(id));
+        
+        if (!foundProduct) {
+          throw new Error('Product not found in database');
+        }
+
+        setProduct(foundProduct);
+
+        // Filter out the current product to make the "Related Products" list
+        const filteredRelated = allProducts.filter(p => p._id !== id && p.productId !== id);
+        setRelatedProducts(filteredRelated.slice(0, 4));
+
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+        setProduct(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductData();
     window.scrollTo({ top: 0, behavior: 'instant' });
+    
+    // Reset states when product changes
+    setActiveImg(0);
+    setQty(1);
+    setUpsellSelected(false);
   }, [id]);
 
-  // --- STATES ---
+  // --- UI STATES ---
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [openAccordion, setOpenAccordion] = useState('desc');
@@ -41,22 +78,35 @@ const ProductDetails = () => {
   const [upsellSelected, setUpsellSelected] = useState(false);
   const [zoomStyle, setZoomStyle] = useState({ display: 'none' });
   const [toastMsg, setToastMsg] = useState(null);
-  
   const [showReviewModal, setShowReviewModal] = useState(false);
 
-  if (!product) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-      <h2 className="text-2xl font-bold uppercase tracking-widest">Product Not Found</h2>
-      <Link to="/view-all" className="bg-black text-white px-8 py-3 text-xs font-bold uppercase tracking-widest rounded-sm">Return to Shop</Link>
-    </div>
-  );
+  // --- LOADING & ERROR STATES ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-20 bg-[#FCFCFC]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#C5A059] mb-4"></div>
+        <p className="text-gray-500 text-sm tracking-widest uppercase font-bold">Loading Details...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
+        <h2 className="text-2xl font-bold uppercase tracking-widest">Product Not Found</h2>
+        <Link to="/view-all" className="bg-black text-white px-8 py-3 text-xs font-bold uppercase tracking-widest rounded-sm">Return to Shop</Link>
+      </div>
+    );
+  }
 
   // --- CALCULATIONS ---
+  const upsellProduct = relatedProducts.length > 0 ? relatedProducts[0] : null;
   const shippingThreshold = 999;
-  const mainTotal = product.price * qty;
-  const upsellTotal = upsellSelected ? upsellProduct.price : 0;
+  const mainTotal = (product.price || 0) * qty;
+  const upsellTotal = (upsellSelected && upsellProduct) ? (upsellProduct.price || 0) : 0;
   const finalTotal = mainTotal + upsellTotal;
   const progress = Math.min((finalTotal / shippingThreshold) * 100, 100);
+  const productId = product._id || product.id;
 
   // --- HANDLERS ---
   const showToast = (msg) => {
@@ -76,13 +126,13 @@ const ProductDetails = () => {
     setZoomStyle({
       display: 'block',
       backgroundPosition: `${x}% ${y}%`,
-      backgroundImage: `url(${product.images ? product.images[activeImg] : product.image})`
+      backgroundImage: `url(${product.images && product.images.length > 0 ? product.images[activeImg] : (product.image || product.imageUrl)})`
     });
   };
 
   const handleAddToCart = () => {
     addToCart(product, qty);
-    if (upsellSelected) {
+    if (upsellSelected && upsellProduct) {
       addToCart(upsellProduct, 1);
     }
     showToast(`Added to Cart successfully!`);
@@ -91,7 +141,7 @@ const ProductDetails = () => {
 
   const handleToggleWishlist = () => {
     toggleWishlist(product);
-    showToast(isInWishlist(product.id) ? "Removed from Wishlist" : "Added to Wishlist");
+    showToast(isInWishlist(productId) ? "Removed from Wishlist" : "Added to Wishlist");
   };
 
   const handleWriteReviewClick = () => {
@@ -107,6 +157,9 @@ const ProductDetails = () => {
     setShowReviewModal(false);
     showToast("Review submitted successfully! Pending approval.");
   };
+
+  // Safe image array fallback
+  const displayImages = product.images && product.images.length > 0 ? product.images : [product.image || product.imageUrl || "https://via.placeholder.com/600"];
 
   return (
     <div className="bg-white font-sans text-gray-900 pb-20 md:pb-0 relative">
@@ -182,7 +235,7 @@ const ProductDetails = () => {
               <div className="flex flex-col-reverse md:flex-row gap-4">
                 {/* Thumbnails */}
                 <div className="flex md:flex-col m-4 gap-3 overflow-x-auto md:overflow-visible w-full md:w-20 flex-shrink-0 hide-scrollbar py-1">
-                  {(product.images || [product.image]).map((img, i) => (
+                  {displayImages.map((img, i) => (
                     <button 
                       key={i} 
                       onClick={() => setActiveImg(i)}
@@ -200,7 +253,7 @@ const ProductDetails = () => {
                   onMouseLeave={() => setZoomStyle({ display: 'none' })}
                 >
                    <img 
-                     src={product.images ? product.images[activeImg] : product.image} 
+                     src={displayImages[activeImg]} 
                      alt={product.name} 
                      className="max-h-full max-w-full object-contain mix-blend-multiply p-8 transition-opacity duration-300" 
                      loading="eager"
@@ -214,7 +267,7 @@ const ProductDetails = () => {
                    
                    <div className="absolute top-4 right-4 flex flex-col gap-3 z-30">
                       <button onClick={handleToggleWishlist} className="bg-white p-2.5 rounded-full shadow-sm hover:shadow-lg hover:bg-black hover:text-white transition-all duration-300 group/btn">
-                        <Heart size={20} fill={isInWishlist(product.id) ? "#EF4444" : "none"} className={isInWishlist(product.id) ? "text-red-500 group-hover/btn:text-red-500" : ""} />
+                        <Heart size={20} fill={isInWishlist(productId) ? "#EF4444" : "none"} className={isInWishlist(productId) ? "text-red-500 group-hover/btn:text-red-500" : ""} />
                       </button>
                       <button className="bg-white p-2.5 rounded-full shadow-sm hover:shadow-lg hover:bg-black hover:text-white transition-all duration-300">
                         <Share2 size={20} />
@@ -230,7 +283,7 @@ const ProductDetails = () => {
              <div>
                <div className="flex items-center gap-2 mb-3">
                   <div className="flex text-yellow-500">
-                      {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="currentColor" />)}
+                      {[1,2,3,4,5].map(i => <Star key={i} size={14} fill={i <= (product.rating || 5) ? "currentColor" : "none"} />)}
                   </div>
                   <span className="text-xs font-bold text-gray-500 underline cursor-pointer hover:text-black transition-colors">{product.reviewCount || 124} Reviews</span>
                </div>
@@ -242,7 +295,7 @@ const ProductDetails = () => {
 
              <div className="text-red-600 text-xs font-bold animate-pulse flex items-center gap-2 bg-red-50 w-fit px-3 py-1.5 rounded-sm">
                <span className="w-1.5 h-1.5 rounded-full bg-red-600 inline-block"></span> 
-               Only 4 units left at this price!
+               Only a few units left at this price!
              </div>
 
              {/* Price & Offers */}
@@ -293,29 +346,31 @@ const ProductDetails = () => {
                 )}
 
                 {/* Frequent Bought Together */}
-                <div className={`mt-8 border p-4 rounded-sm transition-all duration-300 cursor-pointer ${upsellSelected ? 'border-black bg-gray-50/50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setUpsellSelected(!upsellSelected)}>
-                   <div className="flex items-center justify-between mb-3">
-                     <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Frequently Bought Together</h4>
-                     <input 
-                       type="checkbox" 
-                       className="w-4 h-4 accent-black pointer-events-none"
-                       checked={upsellSelected}
-                       readOnly
-                     />
-                   </div>
-                   <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-[#F9F9F9] border border-gray-100 rounded-sm p-1 flex-shrink-0">
-                         <img src={upsellProduct.image} className="w-full h-full object-contain mix-blend-multiply" alt={upsellProduct.name} loading="lazy" />
-                      </div>
-                      <div className="flex-1">
-                         <p className="text-sm font-bold line-clamp-1 text-gray-900">{upsellProduct.name}</p>
-                         <div className="flex items-center gap-2 mt-1">
-                           <span className="text-sm font-black">₹{upsellProduct.price}</span>
-                           {upsellProduct.mrp > upsellProduct.price && <span className="line-through text-xs text-gray-400 font-light">₹{upsellProduct.mrp}</span>}
-                         </div>
-                      </div>
-                   </div>
-                </div>
+                {upsellProduct && (
+                  <div className={`mt-8 border p-4 rounded-sm transition-all duration-300 cursor-pointer ${upsellSelected ? 'border-black bg-gray-50/50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setUpsellSelected(!upsellSelected)}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Frequently Bought Together</h4>
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 accent-black pointer-events-none"
+                        checked={upsellSelected}
+                        readOnly
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-[#F9F9F9] border border-gray-100 rounded-sm p-1 flex-shrink-0">
+                          <img src={upsellProduct.image || upsellProduct.imageUrl || "https://via.placeholder.com/300"} className="w-full h-full object-contain mix-blend-multiply" alt={upsellProduct.name} loading="lazy" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold line-clamp-1 text-gray-900">{upsellProduct.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm font-black">₹{upsellProduct.price}</span>
+                            {upsellProduct.mrp > upsellProduct.price && <span className="line-through text-xs text-gray-400 font-light">₹{upsellProduct.mrp}</span>}
+                          </div>
+                        </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Add to Cart Row */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-8">
@@ -347,9 +402,17 @@ const ProductDetails = () => {
                 </Accordion>
                 <Accordion title="How to Use" isOpen={openAccordion==='use'} onClick={() => setOpenAccordion(openAccordion==='use'?'':'use')}>
                    <ul className="list-disc pl-5 space-y-2 text-sm text-gray-600 pb-5 font-light marker:text-[#C5A059]">
-                     <li>Apply directly to the target area on clean skin/hair.</li>
-                     <li>Massage gently for 3-5 minutes until fully absorbed into the dermis.</li>
-                     <li>Leave overnight for optimal clinical results. Use daily.</li>
+                     {product.ritual && product.ritual.length > 0 ? (
+                       product.ritual.map((step, idx) => (
+                         <li key={idx}><strong>{step.title}:</strong> {step.desc}</li>
+                       ))
+                     ) : (
+                       <>
+                         <li>Apply directly to the target area on clean skin/hair.</li>
+                         <li>Massage gently for 3-5 minutes until fully absorbed into the dermis.</li>
+                         <li>Leave overnight for optimal clinical results. Use daily.</li>
+                       </>
+                     )}
                    </ul>
                 </Accordion>
              </div>
@@ -436,36 +499,38 @@ const ProductDetails = () => {
       </section>
 
       {/* --- RELATED PRODUCTS --- */}
-      <section className="py-20 md:py-24 bg-[#F8F9FA] border-t border-gray-100">
-         <div className="max-w-[1400px] mx-auto px-6">
-            <div className="text-center mb-12 md:mb-16">
-              <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-3 block">Complete The Regimen</span>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">You May Also Like</h2>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-               {relatedProducts.map((item) => (
-                  <Link to={`/product/${item.id}`} key={item.id} className="bg-white flex flex-col rounded-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 border border-gray-100 group">
-                     <div className="aspect-[4/5] bg-[#F9F9F9] overflow-hidden relative rounded-t-sm">
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
-                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 mix-blend-multiply p-2"
-                          loading="lazy"
-                        />
-                     </div>
-                     <div className="p-4 md:p-5 text-center flex-1 flex flex-col">
-                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">{item.concern || "Care"}</p>
-                        <h3 className="font-bold text-xs md:text-sm mb-3 line-clamp-2 group-hover:text-[#C5A059] transition-colors leading-snug">{item.name}</h3>
-                        <div className="flex items-center justify-center gap-2 mt-auto">
-                           <span className="font-black text-sm text-gray-900">₹{item.price}</span>
-                        </div>
-                     </div>
-                  </Link>
-               ))}
-            </div>
-         </div>
-      </section>
+      {relatedProducts.length > 0 && (
+        <section className="py-20 md:py-24 bg-[#F8F9FA] border-t border-gray-100">
+           <div className="max-w-[1400px] mx-auto px-6">
+              <div className="text-center mb-12 md:mb-16">
+                <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-3 block">Complete The Regimen</span>
+                <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">You May Also Like</h2>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                 {relatedProducts.map((item) => (
+                    <Link to={`/product/${item._id || item.id}`} key={item._id || item.id} className="bg-white flex flex-col rounded-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 border border-gray-100 group">
+                       <div className="aspect-[4/5] bg-[#F9F9F9] overflow-hidden relative rounded-t-sm">
+                          <img 
+                            src={item.image || item.imageUrl || "https://via.placeholder.com/300"} 
+                            alt={item.name} 
+                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 mix-blend-multiply p-2"
+                            loading="lazy"
+                          />
+                       </div>
+                       <div className="p-4 md:p-5 text-center flex-1 flex flex-col">
+                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">{item.concern || "Care"}</p>
+                          <h3 className="font-bold text-xs md:text-sm mb-3 line-clamp-2 group-hover:text-[#C5A059] transition-colors leading-snug">{item.name}</h3>
+                          <div className="flex items-center justify-center gap-2 mt-auto">
+                             <span className="font-black text-sm text-gray-900">₹{item.price}</span>
+                          </div>
+                       </div>
+                    </Link>
+                 ))}
+              </div>
+           </div>
+        </section>
+      )}
 
       {/* --- MOBILE STICKY BAR --- */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:hidden z-50 flex items-center gap-4 shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.1)] pb-safe">

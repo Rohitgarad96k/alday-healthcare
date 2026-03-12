@@ -20,10 +20,12 @@ export const WishlistProvider = ({ children }) => {
 
   // Add or Remove item from wishlist (Toggle)
   const toggleWishlist = (product) => {
+    const productId = product._id || product.id; // Support MongoDB _id
+
     setWishlistItems(prev => {
-      const exists = prev.find(item => item.id === product.id);
+      const exists = prev.find(item => (item._id || item.id) === productId);
       if (exists) {
-        return prev.filter(item => item.id !== product.id); // Remove if exists
+        return prev.filter(item => (item._id || item.id) !== productId); // Remove if exists
       }
       return [...prev, product]; // Add if it doesn't exist
     });
@@ -31,7 +33,7 @@ export const WishlistProvider = ({ children }) => {
 
   // Helper to check if an item is wishlisted
   const isInWishlist = (id) => {
-    return wishlistItems.some(item => item.id === id);
+    return wishlistItems.some(item => (item._id || item.id) === id);
   };
 
   const getWishlistCount = () => wishlistItems.length;

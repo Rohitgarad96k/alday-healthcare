@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, ShieldCheck, X, UserPlus, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext'; 
 
@@ -7,18 +7,18 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation(); // Initialize useLocation
+  const location = useLocation(); 
   const { register } = useAuth(); 
 
   // Form States
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // GET THE SAVED DESTINATION (Fallback to '/' if they didn't come from Checkout)
   const from = location.state?.from || '/';
 
   // Handle Submit
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -29,10 +29,14 @@ const Register = () => {
       return setError('Password must be at least 6 characters.');
     }
 
-    const response = register(formData);
+    setIsLoading(true);
+
+    // Call the backend via context
+    const response = await register(formData);
     
+    setIsLoading(false);
+
     if (response.success) {
-      // REDIRECT BACK TO CHECKOUT (OR HOME)
       navigate(from, { replace: true }); 
     } else {
       setError(response.message);
@@ -125,13 +129,16 @@ const Register = () => {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-[#2B4C3B] text-white py-3.5 rounded-md font-bold text-sm hover:bg-[#1A2E24] mt-4 transition-colors">
-                 Create Account
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className={`w-full text-white py-3.5 rounded-md font-bold text-sm mt-4 transition-colors ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#2B4C3B] hover:bg-[#1A2E24]'}`}
+              >
+                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
 
             <div className="text-center mt-6">
-              {/* Pass the 'from' state to Login just in case they click this instead */}
               <p className="text-sm text-gray-600">Already have an account? <Link to="/login" state={{ from }} className="text-[#2B4C3B] font-bold hover:underline">Log in</Link></p>
             </div>
           </div>

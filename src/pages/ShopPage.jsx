@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { X, Filter, ChevronDown, Check, Heart, Eye, ArrowRight, ShoppingBag, Sliders } from 'lucide-react';
-import { products } from '../data'; 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
@@ -9,13 +8,16 @@ const ShopPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // --- CRASH-PROOF CONTEXT EXTRACTION ---
   const cartContext = useCart() || {};
   const wishlistContext = useWishlist() || {};
   const { addToCart, setIsCartOpen } = cartContext;
   const { toggleWishlist, isInWishlist } = wishlistContext;
 
-  // --- STATES ---
+  // --- NEW: BACKEND STATE ---
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // --- EXISTING STATES ---
   const [category, setCategory] = useState("All");
   const [sortType, setSortType] = useState("featured");
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,6 +27,30 @@ const ShopPage = () => {
   const [toastMsg, setToastMsg] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  // --- FETCH PRODUCTS FROM BACKEND ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('https://aldey-backend.vercel.app/api/product');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        
+        const data = await response.json();
+        
+        // If your backend returns { success: true, products: [...] }, use data.products
+        // If it just returns an array [...], use data directly.
+        const fetchedProducts = data.data || data.products || [];
+        setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // --- INSTANT ROUTING FIX ---
   useEffect(() => {
@@ -45,54 +71,45 @@ const ShopPage = () => {
     }
   }, [location.search]);
 
-  // --- EXTREME PERFORMANCE FILTERING ENGINE ---
+// --- EXTREME PERFORMANCE FILTERING ENGINE ---
   const filteredData = useMemo(() => {
     if (!Array.isArray(products)) return [];
     let result = [...products];
 
-    // Search Filter
+    // Search Filter (BULLETPROOF STRING CONVERSION)
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const query = String(searchQuery).toLowerCase();
       result = result.filter(p => {
-        const inName = (p?.name || "").toLowerCase().includes(query);
-        const inConcern = (p?.concern || "").toLowerCase().includes(query);
-        const inCategory = (p?.category || "").toLowerCase().includes(query);
-        
-        let inIngredients = false;
-        if (Array.isArray(p.keyActives)) {
-            inIngredients = p.keyActives.some(act => {
-                if (typeof act === 'string') return act.toLowerCase().includes(query);
-                if (act && act.name) return act.name.toLowerCase().includes(query);
-                return false;
-            });
-        }
-        return inName || inConcern || inCategory || inIngredients;
+        const inName = String(p?.name || "").toLowerCase().includes(query);
+        const inConcern = String(p?.concern || "").toLowerCase().includes(query);
+        const inCategory = String(p?.category || "").toLowerCase().includes(query);
+        return inName || inConcern || inCategory;
       });
     }
 
-    // Category Filter
+    // Category Filter (BULLETPROOF STRING CONVERSION)
     if (category !== "All" && !searchQuery) {
-      const lowerCat = category.toLowerCase();
+      const lowerCat = String(category).toLowerCase();
       result = result.filter(p => {
-        const searchableText = `${p?.category || ""} ${p?.concern || ""}`.toLowerCase();
+        const searchableText = String(`${p?.category || ""} ${p?.concern || ""}`).toLowerCase();
         return searchableText.includes(lowerCat);
       });
     }
 
     // Price Filter
     result = result.filter(p => {
-      const price = p?.price || 0;
+      const price = Number(p?.price || 0);
       return price >= (priceRange.min || 0) && price <= (priceRange.max || 10000);
     });
 
     // Sorting Engine
     if (sortType === "low-high") result.sort((a, b) => (a?.price || 0) - (b?.price || 0));
     else if (sortType === "high-low") result.sort((a, b) => (b?.price || 0) - (a?.price || 0));
-    else if (sortType === "a-z") result.sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
-    else if (sortType === "z-a") result.sort((a, b) => (b?.name || "").localeCompare(a?.name || ""));
+    else if (sortType === "a-z") result.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    else if (sortType === "z-a") result.sort((a, b) => String(b?.name || "").localeCompare(String(a?.name || "")));
 
     return result;
-  }, [category, sortType, searchQuery, priceRange]);
+  }, [category, sortType, searchQuery, priceRange, products]);
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -115,7 +132,8 @@ const ShopPage = () => {
 
   const handleToggleWishlist = (product) => {
     if (toggleWishlist) toggleWishlist(product);
-    const isSaved = isInWishlist && isInWishlist(product.id);
+    const productId = product._id || product.id;
+    const isSaved = isInWishlist && isInWishlist(productId);
     showToast(isSaved ? "Removed from Wishlist" : "Added to Wishlist");
   };
 
@@ -127,6 +145,16 @@ const ShopPage = () => {
     setCurrentPage(1);
     navigate('/view-all');
   };
+
+  // --- LOADING STATE ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-20 bg-[#FCFCFC]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#C5A059] mb-4"></div>
+        <p className="text-gray-500 text-sm tracking-widest uppercase font-bold">Loading Collection...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FCFCFC] min-h-screen pb-20 relative font-sans text-gray-900">
@@ -169,9 +197,7 @@ const ShopPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 lg:gap-16 relative">
           
           {/* LEFT SIDEBAR  */}
-              
           <aside className={`fixed inset-0 z-[100] lg:z-10 lg:static bg-white lg:bg-transparent px-8 py-12 lg:p-0 lg:pr-6 transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] transform ${showMobileFilters ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:shadow-none'} w-full sm:w-[350px] lg:w-full lg:col-span-1`}>
-             
              <div className="lg:sticky lg:top-32 max-h-[calc(100vh-100px)] overflow-y-auto flex flex-col hide-scrollbar pb-12 pr-2">
                 
                 {/* Mobile Header */}
@@ -187,7 +213,7 @@ const ShopPage = () => {
                   )}
                 </div>
 
-                {/* Refined Categories */}
+                {/* Categories */}
                 <div className="mb-10">
                    <h6 className="font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-5 pl-1">Target Concerns</h6>
                    <ul className="space-y-1">
@@ -209,7 +235,7 @@ const ShopPage = () => {
                    </ul>
                 </div>
 
-                {/* Minimalist Price Filter */}
+                {/* Price Filter */}
                 <div className="mb-10 pl-1">
                   <h6 className="font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-5">Price Range</h6>
                   <div className="flex items-center gap-4">
@@ -232,7 +258,6 @@ const ShopPage = () => {
           </aside>
 
           {/* RIGHT: PRODUCT GRID AREA */}
-              
           <div className="lg:col-span-3 w-full">
             
             {/* Elegant Toolbar */}
@@ -267,26 +292,28 @@ const ShopPage = () => {
             {/* Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-12 md:gap-y-16 min-h-[600px]"> 
               {currentItems.length > 0 ? (
-                currentItems.map((product) => (
-                  <div className="flex flex-col group/card h-full bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-sm transition-all duration-500 border border-transparent hover:border-gray-100 overflow-hidden" key={product.id}>
+                currentItems.map((product) => {
+                  const productId = product._id || product.id; // Support both standard and MongoDB IDs
+                  
+                  return (
+                  <div className="flex flex-col group/card h-full bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-sm transition-all duration-500 border border-transparent hover:border-gray-100 overflow-hidden" key={productId}>
                     
                     <div className="relative mb-5 bg-[#F4F4F4] aspect-[4/5] overflow-hidden">
                       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 translate-x-10 opacity-0 group-hover/card:translate-x-0 group-hover/card:opacity-100 transition-all duration-400 ease-out">
                          <button onClick={() => handleToggleWishlist(product)} className="bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors group/btn">
-                            <Heart size={16} fill={isInWishlist?.(product.id) ? "#C5A059" : "none"} className={isInWishlist?.(product.id) ? "text-[#C5A059] group-hover/btn:text-[#C5A059]" : ""} />
+                            <Heart size={16} fill={isInWishlist?.(productId) ? "#C5A059" : "none"} className={isInWishlist?.(productId) ? "text-[#C5A059] group-hover/btn:text-[#C5A059]" : ""} />
                          </button>
                          <button onClick={() => setQuickViewProduct(product)} className="bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors">
                             <Eye size={16} />
                          </button>
                       </div>
 
-                      <Link to={`/product/${product.id}`} className="block h-full">
+                      <Link to={`/product/${productId}`} className="block h-full">
                         <img 
-                          src={product.image} 
+                          src={product.image || product.imageUrl || "https://via.placeholder.com/300"} 
                           alt={product.name} 
                           className="w-full h-full object-cover transition-transform duration-[2s] group-hover/card:scale-105 mix-blend-multiply p-4" 
                           loading="lazy" 
-                          decoding="async" 
                         />
                       </Link>
 
@@ -299,7 +326,7 @@ const ShopPage = () => {
                     <div className="text-center flex flex-col flex-1 px-4 pb-6">
                         <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">{product.category || product.concern || "ALDAY"}</p>
                         
-                        <Link to={`/product/${product.id}`} className="block group-hover/card:text-[#C5A059] transition-colors mb-3">
+                        <Link to={`/product/${productId}`} className="block group-hover/card:text-[#C5A059] transition-colors mb-3">
                             <h6 className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 min-h-[40px] tracking-tight">{product.name}</h6>
                         </Link>
                         
@@ -318,7 +345,7 @@ const ShopPage = () => {
                         </button>
                     </div>
                   </div>
-                ))
+                )})
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center py-32 bg-white rounded-sm border border-dashed border-gray-200">
                   <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 shadow-sm border border-gray-100">
@@ -358,7 +385,7 @@ const ShopPage = () => {
               </button>
               
               <div className="w-full md:w-1/2 bg-[#F4F4F4] flex items-center justify-center p-8">
-                 <img src={quickViewProduct.image} alt={quickViewProduct.name} className="max-w-full max-h-[400px] object-contain mix-blend-multiply transition-transform duration-1000 hover:scale-105" />
+                 <img src={quickViewProduct.image || quickViewProduct.imageUrl || "https://via.placeholder.com/300"} alt={quickViewProduct.name} className="max-w-full max-h-[400px] object-contain mix-blend-multiply transition-transform duration-1000 hover:scale-105" />
               </div>
               
               <div className="w-full md:w-1/2 p-8 md:p-14 overflow-y-auto flex flex-col justify-center">
@@ -373,7 +400,7 @@ const ShopPage = () => {
                  
                  <div className="flex flex-col sm:flex-row gap-4 mt-auto">
                     <button onClick={() => handleAddToCart(quickViewProduct)} className="flex-1 bg-black text-white py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#C5A059] transition-all shadow-lg rounded-sm flex items-center justify-center gap-2"><ShoppingBag size={16}/> Add To Bag</button>
-                    <button onClick={() => navigate(`/product/${quickViewProduct.id}`)} className="flex-1 border border-gray-200 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:border-black hover:bg-gray-50 transition-all flex items-center justify-center gap-2 rounded-sm">Full Details <ArrowRight size={16}/></button>
+                    <button onClick={() => navigate(`/product/${quickViewProduct._id || quickViewProduct.id}`)} className="flex-1 border border-gray-200 py-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:border-black hover:bg-gray-50 transition-all flex items-center justify-center gap-2 rounded-sm">Full Details <ArrowRight size={16}/></button>
                  </div>
               </div>
            </div>

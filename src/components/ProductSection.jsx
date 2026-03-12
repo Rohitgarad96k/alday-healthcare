@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { products } from '../data'; 
 import { useCart } from '../context/CartContext'; 
 
 const ProductSection = () => {
@@ -9,11 +8,32 @@ const ProductSection = () => {
   const { addToCart } = useCart();
   
   // --- STATE & REFS ---
-  const scrollRef = useRef(null);
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // 1. USING REF FOR PAUSE STATE (Crucial for extreme smoothness, avoids re-renders)
+  const scrollRef = useRef(null);
   const isPaused = useRef(false); 
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  // --- FETCH PRODUCTS FROM BACKEND ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('https://aldey-backend.vercel.app/api/product'); 
+        if (!response.ok) throw new Error('Failed to fetch products');
+        
+        const data = await response.json();
+        const fetchedProducts = data.data || data.products || [];
+        setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // --- CONTINUOUS INFINITE SCROLL LOGIC ---
   useEffect(() => {
@@ -24,9 +44,6 @@ const ProductSection = () => {
     
     const scroll = () => {
       if (scrollContainer && !isPaused.current) {
-        // Because we duplicated the product array (mapped twice below), 
-        // scrollWidth is exactly double the original content width.
-        // Once we scroll past the first half, instantly reset to 0 to create an infinite loop.
         const halfWidth = scrollContainer.scrollWidth / 2;
         
         if (scrollContainer.scrollLeft >= halfWidth) {
@@ -48,7 +65,7 @@ const ProductSection = () => {
     
     // Cleanup on unmount
     return () => cancelAnimationFrame(animationId);
-  }, []);
+  }, [products]);
 
   // --- ADD TO CART HANDLER ---
   const handleAddToCart = (e, product) => {
@@ -56,6 +73,13 @@ const ProductSection = () => {
     e.stopPropagation();
     addToCart(product);
   };
+
+  // Don't render the section if loading or empty
+  if (isLoading) {
+    return <div className="py-20 text-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black mx-auto"></div></div>;
+  }
+  
+  if (!products || products.length === 0) return null;
 
   return (
     <div className="bg-white py-20 relative overflow-hidden select-none">
@@ -77,7 +101,6 @@ const ProductSection = () => {
       </div>
 
       {/* --- SCROLLABLE PRODUCTS CONTAINER --- */}
-      
       <div className="pl-6">
         <div 
           ref={scrollRef}
@@ -88,10 +111,10 @@ const ProductSection = () => {
           className="flex overflow-x-auto hide-scrollbar gap-4 md:gap-6 pb-4"
           style={{ scrollBehavior: 'auto', pointerEvents: 'auto' }}
         >
-          {/* IMPORTANT: Render the list twice in the SAME container to create the infinite seamless loop */}
+          {/* Render the list twice to create the infinite seamless loop */}
           {products.map((product, idx) => (
             <ProductCard 
-              key={`a-${product.id}-${idx}`} 
+              key={`a-${product._id || product.id}-${idx}`} 
               product={product} 
               navigate={navigate} 
               handleAddToCart={handleAddToCart} 
@@ -99,7 +122,7 @@ const ProductSection = () => {
           ))}
           {products.map((product, idx) => (
             <ProductCard 
-              key={`b-${product.id}-${idx}`} 
+              key={`b-${product._id || product.id}-${idx}`} 
               product={product} 
               navigate={navigate} 
               handleAddToCart={handleAddToCart} 
@@ -127,12 +150,14 @@ const ProductSection = () => {
 
 // --- EXTRACTED PRODUCT CARD ---
 const ProductCard = ({ product, navigate, handleAddToCart }) => {
+  const productId = product._id || product.id; // Handle MongoDB ObjectId
+
   return (
     <div className="w-[calc(50vw-1.5rem)] md:w-[300px] lg:w-[320px] flex-shrink-0 bg-white rounded-sm shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col group/card">
       {/* Image Link */}
-      <Link to={`/product/${product.id}`} className="relative w-full aspect-[4/5] bg-[#f9f9f9] overflow-hidden block">
+      <Link to={`/product/${productId}`} className="relative w-full aspect-[4/5] bg-[#f9f9f9] overflow-hidden block">
         <img
-          src={product.image}
+          src={product.image || product.imageUrl || "https://via.placeholder.com/300"}
           alt={product.name}
           className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover/card:scale-110 mix-blend-multiply pointer-events-none"
         />
@@ -145,7 +170,7 @@ const ProductCard = ({ product, navigate, handleAddToCart }) => {
 
         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 md:gap-4">
            <button 
-              onClick={(e) => { e.preventDefault(); navigate(`/product/${product.id}`); }} 
+              onClick={(e) => { e.preventDefault(); navigate(`/product/${productId}`); }} 
               className="bg-white p-2.5 md:p-3 rounded-full shadow-lg hover:bg-black hover:text-white transition-colors transform translate-y-4 group-hover/card:translate-y-0 duration-300"
            >
               <Eye size={16} className="md:w-[18px] md:h-[18px]" />
@@ -164,13 +189,13 @@ const ProductCard = ({ product, navigate, handleAddToCart }) => {
         <p className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5 md:mb-2">
           {product.vendor || "ALDAY"}
         </p>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${productId}`}>
           <h3 className="text-xs md:text-sm font-bold text-gray-900 leading-snug mb-1.5 md:mb-2 hover:text-[#C5A059] transition-colors line-clamp-2 min-h-[34px] md:min-h-[40px]">
             {product.name}
           </h3>
         </Link>
         <p className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-widest mb-3 md:mb-4 line-clamp-1">
-          {product.concern}
+          {product.concern || "Wellness"}
         </p>
         <div className="mt-auto pt-3 md:pt-4 border-t border-gray-50">
           <div className="flex justify-center items-center gap-2 md:gap-3">

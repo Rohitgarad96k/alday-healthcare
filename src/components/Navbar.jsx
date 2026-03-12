@@ -151,7 +151,7 @@ const Navbar = () => {
                           <ul className="space-y-3">
                             {megaMenuData[item].products.map((link) => (
                               <li key={link}>
-                                <Link to={`/view-all?search=${link}`} className="text-sm text-gray-800 hover:text-[#C5A059] transition-colors font-medium block">{link}</Link>
+                                <Link to={`/view-all?search=${link}`} onClick={() => setActiveMenu(null)} className="text-sm text-gray-800 hover:text-[#C5A059] transition-colors font-medium block">{link}</Link>
                               </li>
                             ))}
                           </ul>
@@ -354,7 +354,7 @@ const Navbar = () => {
             <span className="text-xl font-bold tracking-widest text-black">
               ALDAY
             </span>
-            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors active:bg-gray-200">
               <X size={24} className="text-gray-500 hover:text-black" />
             </button>
           </div>
@@ -362,30 +362,52 @@ const Navbar = () => {
           {/* Mobile Menu Scrollable Content */}
           <div className="flex-1 overflow-y-auto hide-scrollbar p-6">
             
-            <Link to="/view-all" className="block py-4 border-b border-gray-100 text-sm font-bold uppercase tracking-widest hover:text-[#C5A059] transition-colors">
+            <Link 
+              to="/view-all" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-4 px-3 -mx-3 rounded-lg border-b border-gray-100 text-sm font-bold uppercase tracking-widest active:bg-gray-100 active:text-[#C5A059] transition-colors"
+            >
               Shop All
             </Link>
 
             {/* Accordion Categories */}
             {['HAIRCARE', 'SKINCARE', 'BODYCARE'].map((cat) => (
               <div key={cat} className="border-b border-gray-100">
-                <button 
-                  onClick={() => toggleMobileAccordion(cat)}
-                  className="w-full flex items-center justify-between py-4 text-sm font-bold uppercase tracking-widest text-gray-900 group"
-                >
-                  <span className={`transition-colors ${expandedMobileMenu === cat ? 'text-[#C5A059]' : 'group-hover:text-[#C5A059]'}`}>{cat}</span>
-                  <ChevronDown size={18} className={`transition-transform duration-300 text-gray-400 ${expandedMobileMenu === cat ? 'rotate-180 text-[#C5A059]' : ''}`} />
-                </button>
                 
+                {/* SPLIT INTERACTION: Word navigates & closes, Arrow expands list */}
+                <div className="w-full flex items-center justify-between px-3 -mx-3 rounded-lg group active:bg-gray-100 transition-colors">
+                  <Link 
+                    to={`/view-all?cat=${cat}`} 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex-1 py-4 text-sm font-bold uppercase tracking-widest text-gray-900 transition-colors ${expandedMobileMenu === cat ? 'text-[#C5A059]' : ''}`}
+                  >
+                    {cat}
+                  </Link>
+                  <button 
+                    onClick={() => toggleMobileAccordion(cat)}
+                    className="p-3 -mr-3"
+                    aria-label={`Toggle ${cat} submenu`}
+                  >
+                    <ChevronDown size={18} className={`transition-transform duration-300 text-gray-400 ${expandedMobileMenu === cat ? 'rotate-180 text-[#C5A059]' : ''}`} />
+                  </button>
+                </div>
+                
+                {/* Dropdown Content */}
                 <div className={`overflow-hidden transition-all duration-300 ${expandedMobileMenu === cat ? 'max-h-[800px] opacity-100 pb-4' : 'max-h-0 opacity-0'}`}>
                   <div className="pl-4 border-l-2 border-gray-100 space-y-6 mt-2">
                     
                     <div>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Shop by Category</p>
-                      <ul className="space-y-3">
+                      <ul className="space-y-1">
                         {megaMenuData[cat].products.map((item) => (
                           <li key={item}>
-                            <Link to={`/view-all?search=${item}`} className="text-sm text-gray-600 hover:text-black">{item}</Link>
+                            <Link 
+                              to={`/view-all?search=${item}`} 
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="block py-2 px-3 -mx-3 rounded-lg text-sm text-gray-600 active:bg-gray-100 active:text-black transition-colors"
+                            >
+                              {item}
+                            </Link>
                           </li>
                         ))}
                       </ul>
@@ -393,10 +415,16 @@ const Navbar = () => {
 
                     <div>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Shop by Concern</p>
-                      <ul className="space-y-3">
+                      <ul className="space-y-1">
                         {megaMenuData[cat].concerns.map((item) => (
                           <li key={item}>
-                            <Link to={`/view-all?cat=${item}`} className="text-sm text-gray-600 hover:text-black">{item}</Link>
+                            <Link 
+                              to={`/view-all?cat=${item}`} 
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="block py-2 px-3 -mx-3 rounded-lg text-sm text-gray-600 active:bg-gray-100 active:text-black transition-colors"
+                            >
+                              {item}
+                            </Link>
                           </li>
                         ))}
                       </ul>
@@ -407,19 +435,33 @@ const Navbar = () => {
               </div>
             ))}
 
-            <Link to="/view-all?cat=Gifting" className="block py-4 border-b border-gray-100 text-sm font-bold uppercase tracking-widest hover:text-[#C5A059] transition-colors">
+            <Link 
+              to="/view-all?cat=Gifting" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-4 px-3 -mx-3 rounded-lg border-b border-gray-100 text-sm font-bold uppercase tracking-widest active:bg-gray-100 active:text-[#C5A059] transition-colors"
+            >
               Gifting
             </Link>
-            <Link to="/view-all?cat=Rituals" className="block py-4 border-b border-gray-100 text-sm font-bold uppercase tracking-widest hover:text-[#C5A059] transition-colors">
+            
+            <Link 
+              to="/view-all?cat=Rituals" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-4 px-3 -mx-3 rounded-lg border-b border-gray-100 text-sm font-bold uppercase tracking-widest active:bg-gray-100 active:text-[#C5A059] transition-colors"
+            >
               Rituals
             </Link>
 
             {/* Explore Section */}
             <div className="mt-8">
-               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Explore Alday</p>
-               <div className="space-y-4">
+               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-3">Explore Alday</p>
+               <div className="space-y-1">
                   {exploreMenuData.map((item, idx) => (
-                    <Link key={idx} to={item.link} className="flex items-center text-sm font-medium text-gray-800 hover:text-[#C5A059]">
+                    <Link 
+                      key={idx} 
+                      to={item.link} 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center py-3 px-3 -mx-3 rounded-lg text-sm font-medium text-gray-800 active:bg-gray-100 active:text-[#C5A059] transition-colors"
+                    >
                       {item.label}
                       {item.badge && <span className="ml-2 w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>}
                     </Link>
@@ -431,14 +473,22 @@ const Navbar = () => {
 
           {/* Mobile Menu Footer Actions */}
           <div className="p-6 bg-[#FBFBFB] border-t border-gray-100 space-y-4">
-             <Link to={user ? "/account" : "/login"} className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-gray-900 hover:text-[#C5A059] transition-colors">
+             <Link 
+               to={user ? "/account" : "/login"} 
+               onClick={() => setIsMobileMenuOpen(false)}
+               className="flex items-center gap-3 p-3 -mx-3 rounded-lg text-sm font-bold uppercase tracking-widest text-gray-900 active:bg-gray-200 transition-colors"
+             >
                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200">
                  <User size={18} />
                </div>
                {user ? 'My Account' : 'Login / Register'}
              </Link>
              
-             <Link to="/wishlist" className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-gray-900 hover:text-[#C5A059] transition-colors">
+             <Link 
+               to="/wishlist" 
+               onClick={() => setIsMobileMenuOpen(false)}
+               className="flex items-center gap-3 p-3 -mx-3 rounded-lg text-sm font-bold uppercase tracking-widest text-gray-900 active:bg-gray-200 transition-colors"
+             >
                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200 relative">
                  <Heart size={18} />
                  {getWishlistCount() > 0 && (
@@ -452,8 +502,7 @@ const Navbar = () => {
           </div>
 
         </div>
-      </div>
-    </>
+      </div>    </>
   );
 };
 

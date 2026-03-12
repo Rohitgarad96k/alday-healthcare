@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 // --- CONTEXT PROVIDERS ---
 import { AuthProvider } from './context/AuthContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -17,6 +17,7 @@ import BackToTop from './components/BackToTopButton';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import ProductDetails from './pages/ProductDetails';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
 const DermaAnalyser = lazy(() => import('./pages/DermaAnalyser'));
@@ -37,6 +38,23 @@ const PageLoader = () => (
     <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
+// Create a wrapper component for the page transitions
+const PageWrapper = ({ children }) => {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 function App() {
   return (
@@ -56,6 +74,7 @@ function App() {
 
               <main className="flex-1">
                 <Suspense fallback={<PageLoader />}>
+                <PageWrapper>
                   <Routes>
                     {/* CORE PAGES - Instant Load */}
                     <Route path="/" element={<HomePage />} />
@@ -77,12 +96,13 @@ function App() {
                     <Route path="/track-order" element={<TrackOrder />} />
                     <Route path="/help-support" element={<HelpSupport />} />
                   </Routes>
+                  </PageWrapper>
                 </Suspense>
               </main>
 
               <Footer />
               <BackToTop />
-              
+
             </div>
 
           </CartProvider>

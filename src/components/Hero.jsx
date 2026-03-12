@@ -1,99 +1,134 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; 
-import { heroSlides } from '../data'; //1. Import data from central file
+import { ArrowRight, Leaf, ShieldCheck, Beaker } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const Hero = () => {
-  const [current, setCurrent] = useState(0);
-  const slides = heroSlides; // Use the imported data
-  const navigate = useNavigate(); // 2. INITIALIZE HOOK
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Auto-scroll effect (changes every 5 seconds)
+  const slides = [
+    {
+      id: 1,
+      image: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+      alt: "Elegant skincare products on minimal background"
+    },
+    {
+      id: 2,
+      image: "https://images.unsplash.com/photo-1615397323868-d0505a415ff5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+      alt: "Natural ingredients and clinical lab setup"
+    },
+    {
+      id: 3,
+      image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+      alt: "Luxurious spa and wellness environment"
+    }
+  ];
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  const nextSlide = () => {
-    setCurrent(current === slides.length - 1 ? 0 : current + 1);
-  };
-
-  const prevSlide = () => {
-    setCurrent(current === 0 ? slides.length - 1 : current - 1);
-  };
-
   return (
-    <div className={`relative transition-colors duration-700 ease-in-out ${slides[current].bgColor} min-h-[500px] md:h-[650px] w-full overflow-hidden flex items-center`}>
+    <div className="relative h-[90vh] md:h-screen w-full bg-black overflow-hidden mt-16 md:mt-0">
       
-      {/* Arrow Navigation */}
-      <button onClick={prevSlide} className="absolute left-4 z-20 p-3 rounded-full bg-white/50 hover:bg-white hidden md:block transition-all shadow-sm">
-        <ChevronLeft size={24} />
-      </button>
-      <button onClick={nextSlide} className="absolute right-4 z-20 p-3 rounded-full bg-white/50 hover:bg-white hidden md:block transition-all shadow-sm">
-        <ChevronRight size={24} />
-      </button>
+      {/* Background Slideshow */}
+      {slides.map((slide, index) => (
+        <div
+          key={slide.id}
+          className={`absolute inset-0 transition-opacity duration-[2000ms] ease-in-out ${
+            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <img
+            src={slide.image}
+            alt={slide.alt}
+            className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-[10000ms] ease-out"
+            style={{
+              transform: index === currentSlide ? 'scale(1)' : 'scale(1.05)'
+            }}
+          />
+          {/* Enhanced Dark Gradient Overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-black/20"></div>
+        </div>
+      ))}
 
-      {/* Main Content Container */}
-      <div className="max-w-[1400px] mx-auto px-6 w-full grid grid-cols-1 md:grid-cols-2 gap-10 items-center relative z-10 h-full">
+      {/* Main Content (ANIMATED WITH FRAMER MOTION) */}
+      <motion.div 
+        className="relative z-10 flex flex-col justify-center h-full px-6 md:px-20 lg:px-32 max-w-[1200px]"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+      >
+        <div className="mb-6 flex items-center gap-3 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+          <span className="w-12 h-[1px] bg-[#C5A059]"></span>
+          <span className="text-[#C5A059] text-xs font-bold tracking-[0.3em] uppercase">Zero Dilution</span>
+        </div>
         
-        {/* Left: Text Content */}
-        <div className="order-2 md:order-1 pb-16 md:pb-0 transition-opacity duration-500 ease-in-out flex flex-col justify-center">
-          <span className="block text-sm md:text-base font-bold tracking-widest uppercase mb-4 text-gray-900">
-            {slides[current].tag}
-          </span>
-          
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            {slides[current].title}
-          </h1>
-          
-          <p className="text-xl md:text-2xl font-light text-gray-800 mb-8 leading-snug">
-             {slides[current].subtitle.split(' ').slice(0, 3).join(' ')} <br/>
-            <span className="font-medium">{slides[current].subtitle.split(' ').slice(3).join(' ')}</span>
-          </p>
-          
-          <div className="flex flex-wrap gap-3 text-sm font-medium text-gray-700 mb-10">
-            {slides[current].features.map((feature, index) => (
-              <React.Fragment key={index}>
-                <span>{feature}</span>
-                {index < slides[current].features.length - 1 && <span className="hidden sm:inline text-gray-400">|</span>}
-              </React.Fragment>
-            ))}
-          </div>
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-white leading-[1.1] tracking-tight mb-6 drop-shadow-lg animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+          CLINICAL <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">NUTRITION</span>
+        </h1>
+        
+        <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-[500px] font-light leading-relaxed animate-fade-in-up drop-shadow-md" style={{animationDelay: '0.6s'}}>
+          Experience the potency of 100% active botanical ingredients. No water, no synthetic fillers. Just pure efficacy for your skin and hair.
+        </p>
 
-          <div>
-            {/* 3. UPDATED BUTTON WITH NAVIGATION */}
-            <button 
-              onClick={() => navigate('/view-all')} 
-              className="bg-black text-white px-10 py-4 rounded-sm text-sm font-bold uppercase tracking-widest hover:bg-gray-800 transition-all shadow-xl transform hover:-translate-y-1"
-            >
-              {slides[current].buttonText}
-            </button>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center animate-fade-in-up" style={{animationDelay: '0.8s'}}>
+          <Link 
+            to="/view-all" 
+            className="bg-white text-black px-8 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#C5A059] hover:text-white transition-all duration-300 flex items-center justify-center gap-3 rounded-sm shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+          >
+            Shop The Collection <ArrowRight size={16} />
+          </Link>
+          <Link 
+            to="/derma-analyser" 
+            className="border border-white/30 text-white px-8 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm rounded-sm"
+          >
+            Skin Analyzer
+          </Link>
         </div>
 
-        {/* Right: Image (Product) */}
-        <div className="relative order-1 md:order-2 flex justify-center items-center h-[350px] md:h-full w-full">
-          <img 
-            key={current} 
-            src={slides[current].image} 
-            alt={slides[current].title} 
-            // Ensures image fits perfectly without cropping or overflow
-            className="object-contain max-h-[70%] md:max-h-[75%] w-auto mix-blend-multiply drop-shadow-2xl animate-fade-in-up transform hover:scale-105 transition-transform duration-700"
-          />
+        {/* Trust Badges */}
+        <div className="mt-16 md:mt-24 flex items-center gap-8 animate-fade-in-up opacity-80" style={{animationDelay: '1s'}}>
+          <div className="flex items-center gap-2 text-white/80">
+            <ShieldCheck size={18} className="text-[#C5A059]" />
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Dermatologically Tested</span>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-white/80">
+            <Beaker size={18} className="text-[#C5A059]" />
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Science Backed</span>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-white/80">
+            <Leaf size={18} className="text-[#C5A059]" />
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase">100% Vegan</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Elegant Scroll Indicator */}
+      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-10 animate-fade-in opacity-50 hidden md:flex">
+        <span className="text-white text-[9px] uppercase tracking-[0.3em]">Scroll</span>
+        <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent overflow-hidden">
+           <div className="w-full h-1/2 bg-[#C5A059] animate-scroll-down"></div>
         </div>
       </div>
 
-      {/* Pagination Dots */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3 z-20">
+      {/* Slide Navigation Dots */}
+      <div className="absolute bottom-10 right-10 md:right-20 z-10 flex gap-3">
         {slides.map((_, index) => (
           <button
             key={index}
-            onClick={() => setCurrent(index)}
-            className={`transition-all duration-300 rounded-full ${
-              current === index ? 'w-10 h-1 bg-black' : 'w-2 h-1 bg-gray-400/50 hover:bg-gray-600'
+            onClick={() => setCurrentSlide(index)}
+            className={`transition-all duration-500 rounded-full border border-white/50 ${
+              index === currentSlide 
+              ? 'w-10 h-2 bg-white' 
+              : 'w-2 h-2 bg-transparent hover:bg-white/50'
             }`}
+            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>

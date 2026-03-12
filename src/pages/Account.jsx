@@ -3,8 +3,6 @@ import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { 
   Package, MapPin, User as UserIcon, LogOut, ChevronRight, 
   Heart, CreditCard, Gift, Settings, Star, Download, Edit3, Trash2, ShieldCheck, Bell
@@ -24,6 +22,9 @@ const Account = () => {
     logout();
     navigate('/login');
   };
+
+  // Safely get the user's name (whether the backend returns 'name' or 'fullName')
+  const displayName = user.fullName || user.name || "User";
 
   // --- MOCK DATA FOR ORDERS ---
   const mockOrders = [
@@ -69,7 +70,7 @@ const Account = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Full Name</p>
-                  <p className="text-base font-medium">{user.name}</p>
+                  <p className="text-base font-medium">{displayName}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Email Address</p>
@@ -189,7 +190,7 @@ const Account = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-[#FBFBFB] p-6 border border-gray-200 rounded-sm shadow-sm relative">
                 <span className="absolute top-6 right-6 bg-black text-white text-[9px] font-bold uppercase px-2.5 py-1 tracking-widest rounded-sm">Default</span>
-                <p className="font-bold text-sm mb-2 flex items-center gap-2">{user.name} <ShieldCheck size={16} className="text-[#C5A059]"/></p>
+                <p className="font-bold text-sm mb-2 flex items-center gap-2">{displayName} <ShieldCheck size={16} className="text-[#C5A059]"/></p>
                 <p className="text-sm text-gray-600 leading-relaxed mb-4 font-light">
                   123 Wellness Avenue, Bandra West<br />
                   Mumbai, Maharashtra 400050, India
@@ -244,7 +245,7 @@ const Account = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Full Name</label>
-                    <input type="text" defaultValue={user.name} className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" />
+                    <input type="text" defaultValue={displayName} className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Phone Number</label>
@@ -290,7 +291,7 @@ const Account = () => {
       <div className="bg-white border-b border-gray-200 pt-32 pb-12 mt-16">
         <div className="max-w-[1200px] mx-auto px-6 text-center">
           <h1 className="text-3xl md:text-5xl font-serif font-bold uppercase tracking-tight mb-3">My Account</h1>
-          <p className="text-gray-500 font-light text-sm">Welcome back, <span className="font-bold text-black uppercase tracking-widest text-xs ml-1">{user.name.split(' ')[0]}</span></p>
+          <p className="text-gray-500 font-light text-sm">Welcome back, <span className="font-bold text-black uppercase tracking-widest text-xs ml-1">{displayName.split(' ')[0]}</span></p>
         </div>
       </div>
 

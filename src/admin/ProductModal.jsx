@@ -46,43 +46,45 @@ const ProductModal = ({ isOpen, onClose, onSubmit, productToEdit }) => {
         <h2 className="text-xl font-bold mb-4">
           {productToEdit ? 'Edit Product' : 'Add New Product'}
         </h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-            <input 
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Product Name</label>
+            <input
               type="text" name="name" required
               value={formData.name} onChange={handleChange}
-              className="w-full border border-gray-300 rounded p-2 focus:ring-slate-500 focus:border-slate-500"
+              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Changed grid-cols-2 to grid-cols-1 sm:grid-cols-2 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-              <input 
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price (₹)</label>
+              <input
                 type="number" step="0.01" name="price" required
                 value={formData.price} onChange={handleChange}
-                className="w-full border border-gray-300 rounded p-2 focus:ring-slate-500 focus:border-slate-500"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-              <input 
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stock</label>
+              <input
                 type="number" name="stock" required
                 value={formData.stock} onChange={handleChange}
-                className="w-full border border-gray-300 rounded p-2 focus:ring-slate-500 focus:border-slate-500"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Changed grid-cols-2 to grid-cols-1 sm:grid-cols-2 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select 
-                name="category" 
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
+              <select
+                name="category"
                 value={formData.category} onChange={handleChange}
-                className="w-full border border-gray-300 rounded p-2"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
               >
                 <option value="Skincare">Skincare</option>
                 <option value="Supplements">Supplements</option>
@@ -90,11 +92,11 @@ const ProductModal = ({ isOpen, onClose, onSubmit, productToEdit }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select 
-                name="status" 
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
+              <select
+                name="status"
                 value={formData.status} onChange={handleChange}
-                className="w-full border border-gray-300 rounded p-2"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
               >
                 <option value="Active">Active</option>
                 <option value="Out of Stock">Out of Stock</option>
@@ -103,16 +105,16 @@ const ProductModal = ({ isOpen, onClose, onSubmit, productToEdit }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <button 
+          <div className="flex justify-end gap-3 mt-8">
+            <button
               type="button" onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition"
+              className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
             </button>
-            <button 
+            <button
               type="submit"
-              className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800 transition"
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all font-medium"
             >
               {productToEdit ? 'Save Changes' : 'Add Product'}
             </button>

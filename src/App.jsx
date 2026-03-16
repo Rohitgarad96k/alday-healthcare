@@ -102,9 +102,7 @@ function App() {
             <ScrollToTop />
             
             <Routes>
-              {/* ============================== */}
               {/* PUBLIC ROUTES (Uses PublicLayout) */}
-              {/* ============================== */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/view-all" element={<ShopPage />} />
@@ -125,9 +123,7 @@ function App() {
                 <Route path="/help-support" element={<HelpSupport />} />
               </Route>
 
-              {/* ============================== */}
               {/* ADMIN ROUTES (No Navbar/Footer) */}
-              {/* ============================== */}
               <Route path="/admin/login" element={<AdminLogin />} />
               
               <Route path="/admin" element={

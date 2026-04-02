@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { X, Filter, ChevronDown, Check, Heart, Eye, ArrowRight, ShoppingBag, Sliders } from 'lucide-react';
+import { X, Filter, ChevronDown, Check, Heart, Eye, ArrowRight, ShoppingBag, Sliders, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import API from '../api/axiosInstance'; // 🆕 Centralized API Client
 
 const ShopPage = () => {
   const location = useLocation();
@@ -13,7 +14,7 @@ const ShopPage = () => {
   const { addToCart, setIsCartOpen } = cartContext;
   const { toggleWishlist, isInWishlist } = wishlistContext;
 
-  // --- NEW: BACKEND STATE ---
+  // --- BACKEND STATE ---
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,19 +29,22 @@ const ShopPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // --- FETCH PRODUCTS FROM BACKEND ---
+  // --- 🆕 FETCH PRODUCTS VIA AXIOS INSTANCE ---
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-const response = await fetch('https://aldey-backend.vercel.app/api/product?limit=1000');        if (!response.ok) throw new Error('Failed to fetch products');
+        const response = await API.get('/product?limit=1000');
         
-        const data = await response.json();
+        // Extract array from response safely
+        const fetchedProducts = response.data.data || response.data.products || response.data || [];
         
-        // If your backend returns { success: true, products: [...] }, use data.products
-        // If it just returns an array [...], use data directly.
-        const fetchedProducts = data.data || data.products || [];
-        setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
+        // Filter out Draft products so customers only see active ones
+        const activeProducts = Array.isArray(fetchedProducts) 
+          ? fetchedProducts.filter(p => p.status !== 'Draft') 
+          : [];
+
+        setProducts(activeProducts); 
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
@@ -70,15 +74,15 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
     }
   }, [location.search]);
 
-// --- EXTREME PERFORMANCE & FUZZY FILTERING ENGINE ---
+  // --- EXTREME PERFORMANCE & FUZZY FILTERING ENGINE ---
   const filteredData = useMemo(() => {
     if (!Array.isArray(products)) return [];
     let result = [...products];
 
     if (searchQuery) {
       const query = String(searchQuery).toLowerCase().trim();
-      const cleanQuery = query.replace(/[^a-z0-9]/g, ''); // Strips all spaces and symbols
-      const singularQuery = cleanQuery.endsWith('s') ? cleanQuery.slice(0, -1) : cleanQuery; // Handles plurals
+      const cleanQuery = query.replace(/[^a-z0-9]/g, ''); 
+      const singularQuery = cleanQuery.endsWith('s') ? cleanQuery.slice(0, -1) : cleanQuery; 
 
       result = result.filter(p => {
         const combinedText = String(`${p?.name} ${p?.category} ${p?.concern} ${p?.description}`).toLowerCase();
@@ -168,14 +172,12 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
   return (
     <div className="bg-[#FCFCFC] min-h-screen pb-20 relative font-sans text-gray-900">
       
-      {/* FORCE STICKY SUPPORT OVERRIDE */}
       <style>{`
         .App, main, body, html {
           overflow-x: clip !important; 
         }
       `}</style>
 
-      {/* TOAST NOTIFICATION */}
       {toastMsg && (
         <div className="fixed top-24 right-6 bg-black text-white px-6 py-3 rounded-sm shadow-2xl z-[200] animate-fade-in-up flex items-center gap-3 border border-gray-800">
           <Check size={16} className="text-[#C5A059]" />
@@ -183,7 +185,6 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
         </div>
       )}
 
-      {/* LUXURY HEADER */}
       <section className="bg-white py-16 md:py-28 border-b border-gray-100 relative overflow-hidden mt-16">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-to-b from-[#C5A059]/5 to-transparent rounded-full blur-3xl pointer-events-none"></div>
         
@@ -200,16 +201,13 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
       <section className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 md:py-20">
-        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 lg:gap-16 relative">
           
           {/* LEFT SIDEBAR  */}
           <aside className={`fixed inset-0 z-[100] lg:z-10 lg:static bg-white lg:bg-transparent px-8 py-12 lg:p-0 lg:pr-6 transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] transform ${showMobileFilters ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:shadow-none'} w-full sm:w-[350px] lg:w-full lg:col-span-1`}>
              <div className="lg:sticky lg:top-32 max-h-[calc(100vh-100px)] overflow-y-auto flex flex-col hide-scrollbar pb-12 pr-2">
                 
-                {/* Mobile Header */}
                 <div className="flex justify-between items-center mb-10 lg:hidden border-b border-gray-100 pb-6">
                    <span className="text-xl font-serif font-bold tracking-wide flex items-center gap-3"><Sliders size={22}/> Filters</span>
                    <button onClick={() => setShowMobileFilters(false)} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors"><X size={20}/></button>
@@ -222,11 +220,10 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
                   )}
                 </div>
 
-                {/* Categories */}
                 <div className="mb-10">
                    <h6 className="font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-5 pl-1">Target Concerns</h6>
                    <ul className="space-y-1">
-                      {['All', 'Hair Growth', 'Hair Fall', 'Dandruff', 'Skin Brightening', 'Acne Control', 'Face Serums', 'Body Care'].map(cat => (
+                      {['All', 'Hair Growth', 'Hair Fall', 'Dandruff', 'Skin Brightening', 'Acne Control', 'Face Serums', 'Body Care', 'Skincare', 'Supplements'].map(cat => (
                         <li key={cat}>
                            <button 
                              onClick={() => {setCategory(cat); setSearchQuery(""); setShowMobileFilters(false); setCurrentPage(1);}}
@@ -244,7 +241,6 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
                    </ul>
                 </div>
 
-                {/* Price Filter */}
                 <div className="mb-10 pl-1">
                   <h6 className="font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-5">Price Range</h6>
                   <div className="flex items-center gap-4">
@@ -269,7 +265,6 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
           {/* RIGHT: PRODUCT GRID AREA */}
           <div className="lg:col-span-3 w-full">
             
-            {/* Elegant Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-5 border-b border-gray-200 gap-4">
               <button onClick={() => setShowMobileFilters(true)} className="lg:hidden flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-black text-white px-6 py-3.5 rounded-sm shadow-lg w-full sm:w-auto">
                 <Filter size={14} /> Filter
@@ -302,12 +297,20 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-12 md:gap-y-16 min-h-[600px]"> 
               {currentItems.length > 0 ? (
                 currentItems.map((product) => {
-                  const productId = product._id || product.id; // Support both standard and MongoDB IDs
+                  const productId = product._id || product.id; 
                   
                   return (
                   <div className="flex flex-col group/card h-full bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-sm transition-all duration-500 border border-transparent hover:border-gray-100 overflow-hidden" key={productId}>
                     
                     <div className="relative mb-5 bg-[#F4F4F4] aspect-[4/5] overflow-hidden">
+                      
+                      {/* 🆕 Bestseller Badge */}
+                      {product.isBestseller && (
+                        <div className="absolute top-3 left-3 z-30 bg-yellow-400/90 backdrop-blur-sm text-yellow-900 text-[8px] md:text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-md flex items-center gap-1.5 rounded-sm">
+                          <Star size={10} className="fill-yellow-900" /> Bestseller
+                        </div>
+                      )}
+
                       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 translate-x-10 opacity-0 group-hover/card:translate-x-0 group-hover/card:opacity-100 transition-all duration-400 ease-out">
                          <button onClick={() => handleToggleWishlist(product)} className="bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-black hover:text-white transition-colors group/btn">
                             <Heart size={16} fill={isInWishlist?.(productId) ? "#C5A059" : "none"} className={isInWishlist?.(productId) ? "text-[#C5A059] group-hover/btn:text-[#C5A059]" : ""} />
@@ -327,11 +330,10 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
                       </Link>
 
                       {product.sale && (
-                        <span className="absolute top-4 left-4 bg-black text-white text-[8px] md:text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-lg">Sale</span>
+                        <span className={`absolute ${product.isBestseller ? 'top-12' : 'top-4'} left-4 bg-black text-white text-[8px] md:text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-lg rounded-sm`}>Sale</span>
                       )}
                     </div>
 
-                    {/* Premium Details Container */}
                     <div className="text-center flex flex-col flex-1 px-4 pb-6">
                         <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">{product.category || product.concern || "ALDAY"}</p>
                         
@@ -367,7 +369,6 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
               )}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center mt-20 gap-3 border-t border-gray-200 pt-10">
                  {[...Array(totalPages)].map((_, i) => (
@@ -393,7 +394,13 @@ const response = await fetch('https://aldey-backend.vercel.app/api/product?limit
                  <X size={20} />
               </button>
               
-              <div className="w-full md:w-1/2 bg-[#F4F4F4] flex items-center justify-center p-8">
+              <div className="w-full md:w-1/2 bg-[#F4F4F4] flex items-center justify-center p-8 relative">
+                 {/* Bestseller Badge in Quickview */}
+                 {quickViewProduct.isBestseller && (
+                    <div className="absolute top-4 left-4 z-30 bg-yellow-400 text-yellow-900 text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-md flex items-center gap-1.5 rounded-sm">
+                      <Star size={10} className="fill-yellow-900" /> Bestseller
+                    </div>
+                 )}
                  <img src={quickViewProduct.image || quickViewProduct.imageUrl || "https://via.placeholder.com/300"} alt={quickViewProduct.name} className="max-w-full max-h-[400px] object-contain mix-blend-multiply transition-transform duration-1000 hover:scale-105" />
               </div>
               

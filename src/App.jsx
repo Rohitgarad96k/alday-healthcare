@@ -19,7 +19,13 @@ import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import ProductDetails from './pages/ProductDetails';
 
-// --- ADMIN PAGES --
+// --- ADMIN IMPORTS ---
+import AdminLayout from './layouts/AdminLayout';
+import AdminDashboard from './admin/AdminDashboard';
+import ProductList from './admin/products/ProductList';
+import AdminLogin from './admin/AdminLogin';
+import OrderList from './admin/orders/OrderList';
+import BestsellerList from './admin/bestsellers/BestsellerList'; // Ensure this file exists or remove this route if not built yet
 import PoliciesPage from './pages/policies/PoliciesPage';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
@@ -81,10 +87,11 @@ const PublicLayout = () => {
   );
 };
 
-// ADMIN PROTECTED ROUTE: Checks if Admin is logged in
+// ADMIN PROTECTED ROUTE: Checks if Admin is logged in securely via JWT Token
 const ProtectedAdminRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('isAdminLoggedIn') === 'true';
-  return isAuthenticated ? children : <Navigate to="/admin/login" />;
+  const adminToken = localStorage.getItem('adminToken');
+  // If the secure token exists, allow access. Otherwise, kick back to login securely.
+  return adminToken ? children : <Navigate to="/admin/login" replace />;
 };
 
 function App() {
@@ -97,7 +104,7 @@ function App() {
             <ScrollToTop />
 
             <Routes>
-              {/* PUBLIC ROUTES (Uses PublicLayout) */}
+              {/* PUBLIC ROUTES (Uses PublicLayout with Navbar/Footer) */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/view-all" element={<ShopPage />} />
@@ -120,7 +127,20 @@ function App() {
                 <Route path="/policies" element={<PoliciesPage />} />
               </Route>
 
-              
+              {/* ADMIN ROUTES (No Navbar/Footer, uses AdminLayout) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+
+              <Route path="/admin" element={
+                <ProtectedAdminRoute>
+                  <AdminLayout />
+                </ProtectedAdminRoute>
+              }>
+                <Route index element={<AdminDashboard />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="bestsellers" element={<BestsellerList />} />
+                <Route path="orders" element={<OrderList />} />
+              </Route>
+
             </Routes>
           </CartProvider>
         </WishlistProvider>

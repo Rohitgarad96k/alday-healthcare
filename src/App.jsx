@@ -25,7 +25,7 @@ import AdminDashboard from './admin/AdminDashboard';
 import ProductList from './admin/products/ProductList';
 import AdminLogin from './admin/AdminLogin';
 import OrderList from './admin/orders/OrderList';
-import BestsellerList from './admin/bestsellers/BestsellerList'; // Ensure this file exists or remove this route if not built yet
+import BestsellerList from './admin/bestsellers/BestsellerList'; 
 import PoliciesPage from './pages/policies/PoliciesPage';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
@@ -87,10 +87,15 @@ const PublicLayout = () => {
   );
 };
 
-// ADMIN PROTECTED ROUTE: Checks if Admin is logged in securely via JWT Token
+// NEW: PROTECTED USER ROUTE
+const ProtectedUserRoute = ({ children }) => {
+  const userToken = localStorage.getItem('alday_auth_token');
+  return userToken ? children : <Navigate to="/login" replace />;
+};
+
+// ADMIN PROTECTED ROUTE
 const ProtectedAdminRoute = ({ children }) => {
   const adminToken = localStorage.getItem('adminToken');
-  // If the secure token exists, allow access. Otherwise, kick back to login securely.
   return adminToken ? children : <Navigate to="/admin/login" replace />;
 };
 
@@ -100,11 +105,9 @@ function App() {
       <AuthProvider>
         <WishlistProvider>
           <CartProvider>
-
             <ScrollToTop />
-
             <Routes>
-              {/* PUBLIC ROUTES (Uses PublicLayout with Navbar/Footer) */}
+              {/* PUBLIC ROUTES */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/view-all" element={<ShopPage />} />
@@ -116,18 +119,30 @@ function App() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/account" element={<Account />} />
                 <Route path="/wishlist" element={<Wishlist />} />
-
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/order-success" element={<Success />} />
                 <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="/help-support" element={<HelpSupport />} />
-
                 <Route path="/policies" element={<PoliciesPage />} />
+
+                {/* PROTECTED USER ROUTES */}
+                <Route path="/account" element={
+                  <ProtectedUserRoute>
+                    <Account />
+                  </ProtectedUserRoute>
+                } />
+                <Route path="/checkout" element={
+                  <ProtectedUserRoute>
+                    <Checkout />
+                  </ProtectedUserRoute>
+                } />
+                <Route path="/order-success" element={
+                  <ProtectedUserRoute>
+                    <Success />
+                  </ProtectedUserRoute>
+                } />
               </Route>
 
-              {/* ADMIN ROUTES (No Navbar/Footer, uses AdminLayout) */}
+              {/* ADMIN ROUTES */}
               <Route path="/admin/login" element={<AdminLogin />} />
 
               <Route path="/admin" element={

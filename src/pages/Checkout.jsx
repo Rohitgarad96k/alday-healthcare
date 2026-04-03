@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom'; // 1. Added useLocation and Navigate
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import API from '../api/axiosInstance'; // 1. Import our secure API instance
 import {
     ChevronLeft, MapPin, CreditCard, ShieldCheck,
     Lock, ArrowRight, AlertCircle, Loader2
@@ -11,9 +12,9 @@ const Checkout = () => {
     const { cartItems, getCartTotal, clearCart } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation(); // 2. Initialize location
+    const location = useLocation();
 
-    // 3. ROUTE PROTECTION: If no user, redirect to login and pass the current path
+    // ROUTE PROTECTION
     if (!user) {
         return <Navigate to="/login" state={{ from: location.pathname }} replace />;
     }
@@ -22,13 +23,14 @@ const Checkout = () => {
     const [step, setStep] = useState(1);
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [checkoutError, setCheckoutError] = useState(null); // 2. Added error state
 
     // Form States
     const [coupon, setCoupon] = useState("");
     const [appliedDiscount, setAppliedDiscount] = useState(0);
     const [shippingDetails, setShippingDetails] = useState({
-        firstName: user?.name?.split(' ')[0] || '',
-        lastName: user?.name?.split(' ')[1] || '',
+        firstName: user?.name?.split(' ')[0] || user?.fullName?.split(' ')[0] || '',
+        lastName: user?.name?.split(' ')[1] || user?.fullName?.split(' ')[1] || '',
         address: '',
         city: '',
         pincode: '',
@@ -54,30 +56,53 @@ const Checkout = () => {
     const applyCoupon = () => {
         if (coupon.toUpperCase() === "ALDAY10") {
             setAppliedDiscount(10); // 10% Off
+            setCheckoutError(null);
         } else {
-            alert("Invalid Coupon Code. Try ALDAY10");
+            setCheckoutError("Invalid Coupon Code. Try ALDAY10");
         }
     };
 
-    const handleFinalOrder = () => {
-        // Prevent multiple clicks while processing
+    // 3. REAL API INTEGRATION FOR FINAL ORDER
+    const handleFinalOrder = async () => {
         if (isProcessing) return;
-
-        // Start the processing state
         setIsProcessing(true);
+        setCheckoutError(null);
 
-        // Simulate a 2-second payment delay
-        setTimeout(() => {
-            setIsProcessing(false); 
+        try {
+            // Format the address into a single string if your backend prefers it, 
+            // or pass it as an object based on your specific backend schema.
+            const fullAddress = `${shippingDetails.address}, ${shippingDetails.city} - ${shippingDetails.pincode}`;
 
+            const orderPayload = {
+                shippingAddress: fullAddress,
+                phone: shippingDetails.phone,
+                paymentMethod: paymentMethod,
+                totalAmount: total,
+                // Note: The backend usually pulls the items directly from the user's active Cart in the DB.
+                // If your backend specifically requires the items array in the order payload, uncomment below:
+                // items: cartItems.map(item => ({ product: item._id, quantity: item.quantity }))
+            };
+
+            // Call the Order API Endpoint (Adjust '/orders' if your Swagger doc uses '/order/create' etc.)
+            await API.post('/orders', orderPayload);
+
+            // Once the order is successfully created on the server, clear the cart
             if (typeof clearCart === 'function') {
-                clearCart(); 
-            } else {
-                console.error("clearCart is not defined. Check your CartContext imports.");
+                await clearCart(); // Ensure this awaits the API.delete('/cart/clear') we set up earlier
             }
             
+            // Redirect to success page
             navigate('/order-success'); 
-        }, 2000);
+
+        } catch (error) {
+            console.error("Order Creation Error:", error);
+            setCheckoutError(
+                error.response?.data?.message || 
+                "There was an issue processing your order. Please try again."
+            );
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     // If cart is empty, show empty state
@@ -122,6 +147,14 @@ const Checkout = () => {
                             Payment
                         </div>
                     </div>
+
+                    {/* Global Error Display */}
+                    {checkoutError && (
+                        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-sm text-sm font-medium flex items-center gap-3 animate-fade-in">
+                            <AlertCircle size={18} />
+                            {checkoutError}
+                        </div>
+                    )}
 
                     {step === 1 ? (
                         <div className="animate-fade-in-up">
@@ -217,18 +250,25 @@ const Checkout = () => {
                         <h3 className="font-bold uppercase tracking-[0.2em] text-xs mb-8 border-b border-gray-50 pb-4">Order Summary ({cartItems.length})</h3>
 
                         <div className="max-h-[300px] overflow-y-auto pr-3 mb-8 space-y-5 custom-scrollbar">
-                            {cartItems.map((item) => (
-                                <div key={item.id} className="flex gap-4 group">
+                            {cartItems.map((item, index) => {
+                                // Fallback for ID and Image mapping depending on how the backend returns items
+                                const itemId = item._id || item.id || index;
+                                const itemImg = item.image || item.productId?.image;
+                                const itemName = item.name || item.productId?.name;
+                                const itemPrice = item.price || item.productId?.price || 0;
+
+                                return (
+                                <div key={itemId} className="flex gap-4 group">
                                     <div className="w-16 h-20 bg-[#F9F9F9] flex-shrink-0 p-2 rounded-sm">
-                                        <img src={item.image} alt="" className="w-full h-full object-contain mix-blend-multiply transition-transform group-hover:scale-110" />
+                                        <img src={itemImg} alt={itemName} className="w-full h-full object-contain mix-blend-multiply transition-transform group-hover:scale-110" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-[11px] font-bold text-black uppercase leading-tight line-clamp-2">{item.name}</p>
+                                        <p className="text-[11px] font-bold text-black uppercase leading-tight line-clamp-2">{itemName}</p>
                                         <p className="text-[10px] text-gray-400 uppercase font-medium mt-1 tracking-widest">Qty: {item.quantity}</p>
-                                        <p className="text-xs font-bold mt-2 text-black tracking-tight">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                        <p className="text-xs font-bold mt-2 text-black tracking-tight">₹{(itemPrice * item.quantity).toLocaleString()}</p>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
 
                         <div className="flex gap-2 mb-8 bg-gray-50 p-2 rounded-sm">

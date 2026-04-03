@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import API from '../api/axiosInstance'; // <-- Import your Axios instance
 
 const CartContext = createContext();
 
@@ -7,8 +8,6 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
-  const API_BASE_URL = 'https://aldey-backend.vercel.app/api/cart';
 
   const getToken = () => localStorage.getItem('alday_auth_token');
 
@@ -25,35 +24,30 @@ export const CartProvider = ({ children }) => {
       const token = getToken();
       if (token) {
         try {
-          const res = await fetch(API_BASE_URL, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const fetchedItems = data.items || data.data?.items || data.cart?.items || data.data || []; 
+          const { data } = await API.get('/cart');
+          const fetchedItems = data.items || data.data?.items || data.cart?.items || data.data || []; 
+          
+          const normalizedCart = fetchedItems.map(item => {
+            const productObj = typeof item.productId === 'object' ? item.productId : 
+                               typeof item.product === 'object' ? item.product : null;
             
-            const normalizedCart = fetchedItems.map(item => {
-              const productObj = typeof item.productId === 'object' ? item.productId : 
-                                 typeof item.product === 'object' ? item.product : null;
-              
-              if (productObj) {
-                return {
-                  ...productObj,
-                  _id: productObj._id || productObj.id,
-                  quantity: Number(item.quantity) || 1
-                };
-              }
+            if (productObj) {
               return {
-                ...item,
-                _id: getTrueId(item),
+                ...productObj,
+                _id: productObj._id || productObj.id,
                 quantity: Number(item.quantity) || 1
               };
-            });
-
-            if (normalizedCart.length > 0) {
-              setCartItems(normalizedCart);
-              return; 
             }
+            return {
+              ...item,
+              _id: getTrueId(item),
+              quantity: Number(item.quantity) || 1
+            };
+          });
+
+          if (normalizedCart.length > 0) {
+            setCartItems(normalizedCart);
+            return; 
           }
         } catch (error) {
           console.error("Failed to load cart from server", error);
@@ -74,6 +68,7 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (product, quantity = 1) => {
     const pId = getTrueId(product);
+    const previousCart = [...cartItems]; // Store for rollback
 
     // 1. Optimistic UI Update
     setCartItems(prev => {
@@ -89,44 +84,38 @@ export const CartProvider = ({ children }) => {
     setIsCartOpen(true);
 
     // 2. Server Sync
-    const token = getToken();
-    if (token) {
+    if (getToken()) {
       try {
-        await fetch(`${API_BASE_URL}/add`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ productId: pId, quantity: Number(quantity) })
-        });
+        await API.post('/cart/add', { productId: pId, quantity: Number(quantity) });
       } catch (error) {
         console.error("Failed to sync add to cart with server", error);
+        setCartItems(previousCart); // ROLLBACK
       }
     }
   };
 
   const removeFromCart = async (id) => {
+    const previousCart = [...cartItems]; // Store for rollback
+
     setCartItems(prev => prev.filter(item => getTrueId(item) !== id));
 
-    const token = getToken();
-    if (token) {
+    if (getToken()) {
       try {
-        await fetch(`${API_BASE_URL}/remove/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      } catch (error) {}
+        await API.delete(`/cart/remove/${id}`);
+      } catch (error) {
+        console.error("Failed to remove item", error);
+        setCartItems(previousCart); // ROLLBACK
+      }
     }
   };
 
   const updateQuantity = async (id, delta) => {
     let newQuantity = 1;
+    const previousCart = [...cartItems]; // Store for rollback
     
     // 1. Optimistic UI Update
     setCartItems(prev => prev.map(item => {
       const currentId = getTrueId(item);
-      
       if (String(currentId) === String(id)) {
         newQuantity = Math.max(1, Number(item.quantity) + Number(delta));
         return { ...item, quantity: newQuantity };
@@ -135,33 +124,27 @@ export const CartProvider = ({ children }) => {
     }));
 
     // 2. Server Sync
-    const token = getToken();
-    if (token) {
+    if (getToken()) {
       try {
-        await fetch(`${API_BASE_URL}/update`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ productId: id, quantity: newQuantity }) 
-        });
+        await API.put('/cart/update', { productId: id, quantity: newQuantity });
       } catch (error) {
         console.error("Failed to sync quantity", error);
+        setCartItems(previousCart); // ROLLBACK
       }
     }
   };
 
   const clearCart = async () => {
+    const previousCart = [...cartItems]; // Store for rollback
     setCartItems([]);
-    const token = getToken();
-    if (token) {
+    
+    if (getToken()) {
       try {
-        await fetch(`${API_BASE_URL}/clear`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      } catch (error) {}
+        await API.delete('/cart/clear');
+      } catch (error) {
+        console.error("Failed to clear cart", error);
+        setCartItems(previousCart); // ROLLBACK
+      }
     }
   };
 
@@ -171,15 +154,8 @@ export const CartProvider = ({ children }) => {
 
   return (
     <CartContext.Provider value={{ 
-      cartItems, 
-      addToCart, 
-      removeFromCart, 
-      updateQuantity, 
-      clearCart,
-      getCartTotal, 
-      getCartCount,
-      isCartOpen, 
-      setIsCartOpen 
+      cartItems, addToCart, removeFromCart, updateQuantity, clearCart,
+      getCartTotal, getCartCount, isCartOpen, setIsCartOpen 
     }}>
       {children}
     </CartContext.Provider>

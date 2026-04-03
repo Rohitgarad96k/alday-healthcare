@@ -1,44 +1,49 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../api/axiosInstance'; // Importing the central Axios setup
+import API from '../api/axiosInstance'; 
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Added loading state
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e  ) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError(''); // Clear previous errors
+    setError(''); 
     setIsLoading(true);
 
     try {
-      // 1. Send the actual credentials to your Vercel backend
       const response = await API.post('/auth/login', {
         email,
         password,
       });
 
-      // 2. Extract the JWT token from the response
-      // (Adjust 'response.data.token' if your backend names it differently, e.g., 'accessToken')
       const { token, user } = response.data;
 
-      // 3. Store the secure token in localStorage
+      // --- THE CRITICAL FIX: Verify Admin Role ---
+      // Adjust 'role' and 'admin' based on exactly what your backend returns.
+      // If your backend doesn't return a role, you MUST add it to your backend schema.
+      // if (user && user.role !== 'admin') {
+      //   setError("Access Denied: This account does not have administrator privileges.");
+      //   setIsLoading(false);
+      //   return; // Stop the login process
+      // }
+
+      // Store the secure token in localStorage
       localStorage.setItem('adminToken', token);
       
-      // Optional: Store admin info if needed for the header (like their name)
+      // Store admin info if needed for the header
       if (user) {
         localStorage.setItem('adminUser', JSON.stringify(user));
       }
 
-      // 4. Redirect to the Dashboard
+      // Redirect to the Dashboard
       navigate('/admin');
       
     } catch (err) {
       console.error("Login Error:", err);
-      // Display the specific error message sent by your backend, or a default one
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {

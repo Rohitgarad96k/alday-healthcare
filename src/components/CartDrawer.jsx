@@ -1,11 +1,14 @@
-import React from 'react';
-import { X, Plus, Minus, Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Plus, Minus, Trash2, ArrowRight, ShoppingBag, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 const CartDrawer = () => {
   const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal } = useCart();
   const navigate = useNavigate();
+  
+  // Local state to track which item is currently being updated to prevent spam-clicking
+  const [updatingItemId, setUpdatingItemId] = useState(null);
 
   // Free Shipping Threshold logic
   const FREE_SHIPPING_THRESHOLD = 999;
@@ -13,9 +16,31 @@ const CartDrawer = () => {
   const amountToFreeShipping = FREE_SHIPPING_THRESHOLD - currentTotal;
   const progressPercentage = Math.min((currentTotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
+  // Wrapper function for updating quantity that handles the loading state
+  const handleUpdateQuantity = async (id, delta) => {
+    if (updatingItemId) return; // Prevent overlapping requests
+    setUpdatingItemId(id);
+    try {
+      await updateQuantity(id, delta);
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
+  // Wrapper for removing item to handle loading state
+  const handleRemoveItem = async (id) => {
+    if (updatingItemId) return;
+    setUpdatingItemId(id);
+    try {
+      await removeFromCart(id);
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
   return (
     <>
-      {/* 1. Backdrop (Smooth fade transition) */}
+      {/* 1. Backdrop */}
       <div 
         className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] transition-opacity duration-400 ${
           isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -23,7 +48,7 @@ const CartDrawer = () => {
         onClick={() => setIsCartOpen(false)}
       />
 
-      {/* 2. Drawer Panel (Smooth slide transition) */}
+      {/* 2. Drawer Panel */}
       <div 
         className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[250] flex flex-col transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
           isCartOpen ? 'translate-x-0' : 'translate-x-full'
@@ -80,14 +105,20 @@ const CartDrawer = () => {
           ) : (
             <div className="space-y-6">
               {cartItems.map((item, index) => {
-                // BULLETPROOF ID: Finds the correct ID no matter how the backend formats it
                 const itemId = item?.productId?._id || item?.productId?.id || item?.productId || item?._id || item?.id;
+                const isUpdating = updatingItemId === itemId;
 
                 return (
-                <div key={`${itemId}-${index}`} className="flex gap-4 group">
+                <div key={`${itemId}-${index}`} className={`flex gap-4 group transition-opacity ${isUpdating ? 'opacity-50' : 'opacity-100'}`}>
                   {/* Product Image */}
-                  <div className="w-20 h-24 bg-[#F9F9F9] flex-shrink-0 overflow-hidden rounded-sm border border-gray-100">
+                  <div className="w-20 h-24 bg-[#F9F9F9] flex-shrink-0 overflow-hidden rounded-sm border border-gray-100 relative">
                      <img src={item.image || item.productId?.image} alt={item.name || item.productId?.name} className="w-full h-full object-cover mix-blend-multiply" />
+                     {/* Show a spinner over the image if this specific item is updating */}
+                     {isUpdating && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                          <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
+                        </div>
+                     )}
                   </div>
                   
                   {/* Product Details */}
@@ -98,8 +129,9 @@ const CartDrawer = () => {
                          <h3 className="font-bold text-sm text-gray-900 leading-snug line-clamp-2">{item.name || item.productId?.name}</h3>
                       </div>
                       <button 
-                        onClick={() => removeFromCart(itemId)} 
-                        className="text-gray-400 hover:text-red-500 transition-colors mt-1"
+                        onClick={() => handleRemoveItem(itemId)} 
+                        disabled={updatingItemId !== null}
+                        className="text-gray-400 hover:text-red-500 transition-colors mt-1 disabled:opacity-50"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -109,16 +141,17 @@ const CartDrawer = () => {
                        {/* Quantity Controls */}
                        <div className="flex items-center border border-gray-200 rounded-sm">
                           <button 
-                            onClick={() => updateQuantity(itemId, -1)} 
-                            className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50" 
-                            disabled={item.quantity <= 1}
+                            onClick={() => handleUpdateQuantity(itemId, -1)} 
+                            className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                            disabled={item.quantity <= 1 || updatingItemId !== null}
                           >
                             <Minus size={12} strokeWidth={3} />
                           </button>
                           <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
                           <button 
-                            onClick={() => updateQuantity(itemId, 1)} 
-                            className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors"
+                            onClick={() => handleUpdateQuantity(itemId, 1)} 
+                            className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={updatingItemId !== null}
                           >
                             <Plus size={12} strokeWidth={3} />
                           </button>
@@ -146,10 +179,17 @@ const CartDrawer = () => {
             
             <Link 
               to="/checkout" 
-              onClick={() => setIsCartOpen(false)}
-              className="w-full bg-black text-white py-4 uppercase text-xs font-bold tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-[#C5A059] transition-all duration-300 rounded-sm shadow-lg group"
+              onClick={(e) => {
+                if (updatingItemId) e.preventDefault(); // Prevent checkout while an update is happening
+                else setIsCartOpen(false);
+              }}
+              className={`w-full py-4 uppercase text-xs font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all duration-300 rounded-sm shadow-lg group ${
+                updatingItemId 
+                  ? 'bg-gray-400 text-white cursor-not-allowed' 
+                  : 'bg-black text-white hover:bg-[#C5A059]'
+              }`}
             >
-              Checkout Securely <ArrowRight size={16} className="transform transition-transform group-hover:translate-x-1" />
+              Checkout Securely <ArrowRight size={16} className={`transform transition-transform ${updatingItemId ? '' : 'group-hover:translate-x-1'}`} />
             </Link>
           </div>
         )}

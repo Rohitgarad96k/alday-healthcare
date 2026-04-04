@@ -31,42 +31,44 @@ const ProductList = () => {
     fetchProducts();
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (product) => {
+    // ✅ FIX: Extract the correct ID for the URL
+    const idForUrl = product.productId || product._id || product.id;
+
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       try {
-        await API.delete(`/product/${id}`);
-        setProducts(products.filter(product => (product._id || product.id) !== id));
+        await API.delete(`/product/${idForUrl}`);
+        // Filter out the deleted item from the state
+        setProducts(products.filter(p => (p.productId || p._id || p.id) !== idForUrl));
       } catch (err) {
         alert(err.response?.data?.message || "Failed to delete product.");
       }
     }
   };
 
-  // 🚀 THE FIX: Real Database Update with Optimistic UI
   const toggleBestseller = async (product) => {
-    const productId = product._id || product.id;
-    if (!productId) return; 
+    // ✅ FIX: Extract the correct ID for the URL
+    const idForUrl = product.productId || product._id || product.id;
+    if (!idForUrl) return; 
 
     const newStatus = !product.bestSeller; 
-    const previousProducts = [...products]; // Save state in case we need to roll back
+    const previousProducts = [...products];
 
-    // 1. Optimistic UI Update (Feels instant to the user)
+    // Optimistic UI Update
     setProducts(products.map(p => 
-      (p._id || p.id) === productId ? { ...p, bestSeller: newStatus } : p
+      (p.productId || p._id || p.id) === idForUrl ? { ...p, bestSeller: newStatus } : p
     ));
     
-    // 2. Real API Call to save permanently
     try {
-      // Assuming your backend supports updating a product via PUT
-      // Adjust the endpoint or payload if your backend uses a different structure
-      await API.put(`/product/${productId}`, {
-        ...product, // Send existing product data
-        bestSeller: newStatus // Override the bestSeller flag
+      const { _id, id, createdAt, updatedAt, __v, ...cleanProduct } = product;
+
+      await API.put(`/product/${idForUrl}`, {
+        ...cleanProduct, 
+        bestSeller: newStatus 
       });
     } catch (error) {
       console.error("Failed to update bestseller status:", error);
       alert("Failed to save bestseller status to database. Reverting.");
-      // 3. Rollback if the API call fails
       setProducts(previousProducts);
     }
   };
@@ -126,10 +128,11 @@ const ProductList = () => {
             <tbody className="divide-y divide-gray-100">
               {products.map((product) => {
                 const inStock = product.countInStock > 0;
-                const productId = product._id || product.id;
+                // Use productId for unique keys
+                const uniqueKeyId = product.productId || product._id || product.id;
 
                 return (
-                  <tr key={productId} className="hover:bg-gray-50/80 transition-colors">
+                  <tr key={uniqueKeyId} className="hover:bg-gray-50/80 transition-colors">
                     <td className="p-4 text-center">
                       <button 
                         onClick={() => toggleBestseller(product)}
@@ -182,8 +185,9 @@ const ProductList = () => {
                       >
                         Edit
                       </button>
+                      {/* ✅ FIX: We pass the entire product object here now */}
                       <button 
-                        onClick={() => handleDelete(productId)} 
+                        onClick={() => handleDelete(product)} 
                         className="text-sm font-bold text-red-600 hover:text-red-900 transition-colors"
                       >
                         Delete

@@ -25,11 +25,11 @@ const AdminLogin = () => {
       // --- THE CRITICAL FIX: Verify Admin Role ---
       // Adjust 'role' and 'admin' based on exactly what your backend returns.
       // If your backend doesn't return a role, you MUST add it to your backend schema.
-      // if (user && user.role !== 'admin') {
-      //   setError("Access Denied: This account does not have administrator privileges.");
-      //   setIsLoading(false);
-      //   return; // Stop the login process
-      // }
+      if (user && user.role !== 'admin') {
+        setError("Access Denied: This account does not have administrator privileges.");
+        setIsLoading(false);
+        return; // Stop the login process
+      }
 
       // Store the secure token in localStorage
       localStorage.setItem('adminToken', token);

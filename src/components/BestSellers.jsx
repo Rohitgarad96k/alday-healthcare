@@ -1,16 +1,40 @@
-import React, { useMemo } from 'react';
-import { ShoppingCart, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Eye, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { products } from '../data'; 
+import API from '../api/axiosInstance'; 
 import { useCart } from '../context/CartContext';
 
 const BestSellers = () => {
   const navigate = useNavigate();
   const { addToCart, setIsCartOpen } = useCart();
+  
+  const [bestSellers, setBestSellers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const bestSellers = useMemo(() => {
-    // Assuming the first 4 products in your data are bestsellers for this example
-    return products.slice(0, 4);
+  useEffect(() => {
+    const fetchBestSellers = async () => {
+      try {
+        setIsLoading(true);
+        const response = await API.get('/product');
+        const allProducts = response.data.data || response.data.products || [];
+        
+        let best = allProducts.filter(product => product.bestSeller === true);
+
+        if (best.length === 0) {
+          best = allProducts.slice(0, 4);
+        } else {
+          best = best.slice(0, 4);
+        }
+
+        setBestSellers(best);
+      } catch (error) {
+        console.error("Failed to fetch bestsellers:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBestSellers();
   }, []);
 
   const handleAddToCart = (e, product) => {
@@ -19,6 +43,14 @@ const BestSellers = () => {
     addToCart(product);
     setIsCartOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <section className="py-20 md:py-24 bg-white border-t border-gray-100 flex justify-center items-center">
+         <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" />
+      </section>
+    );
+  }
 
   if (!bestSellers || bestSellers.length === 0) return null;
 
@@ -39,64 +71,78 @@ const BestSellers = () => {
 
         {/* GRID */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-          {bestSellers.map((product) => (
-            <div key={product.id} className="w-full bg-white flex flex-col group/card h-full rounded-sm border border-transparent hover:border-gray-100 hover:shadow-xl transition-all duration-500">
-              
-              <Link to={`/product/${product.id}`} className="relative w-full aspect-[4/5] bg-[#F9F9F9] overflow-hidden block rounded-t-sm flex-shrink-0">
-                {product.sale && (
-                  <div className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 z-20 shadow-sm">
-                    Sale
+          {bestSellers.map((product) => {
+            const uniqueId = product.productId || product._id;
+            const displayCategory = Array.isArray(product.category) ? product.category[0] : (product.category || "ALDAY");
+
+            return (
+              <div key={uniqueId} className="w-full bg-white flex flex-col group/card h-full rounded-sm border border-transparent hover:border-gray-100 hover:shadow-xl transition-all duration-500">
+                
+                <Link to={`/product/${uniqueId}`} className="relative w-full aspect-[4/5] bg-[#F9F9F9] overflow-hidden block rounded-t-sm flex-shrink-0">
+                  
+                  {/* ✅ NEW: Smart Stacking Badges for Sale & Bestseller */}
+                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
+                    {product.sale && (
+                      <span className="bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 shadow-sm w-fit">
+                        Sale
+                      </span>
+                    )}
+                    {product.bestSeller && (
+                      <span className="bg-black text-[#C5A059] border border-[#C5A059]/30 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 shadow-md w-fit">
+                        Bestseller
+                      </span>
+                    )}
                   </div>
-                )}
 
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-105 pointer-events-none mix-blend-multiply"
-                />
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-105 pointer-events-none mix-blend-multiply"
+                  />
 
-                <div className="hidden lg:flex absolute inset-0 bg-black/5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 items-center justify-center gap-3 z-10">
-                   <button 
-                      onClick={(e) => { e.preventDefault(); navigate(`/product/${product.id}`); }} 
-                      className="bg-white p-3 rounded-full shadow-lg hover:bg-black hover:text-white transition-all transform translate-y-4 group-hover/card:translate-y-0 duration-300"
-                   >
-                      <Eye size={16} />
-                   </button>
-                   <button 
-                      onClick={(e) => handleAddToCart(e, product)} 
-                      className="bg-white p-3 rounded-full shadow-lg hover:bg-black hover:text-white transition-all transform translate-y-4 group-hover/card:translate-y-0 duration-500"
-                   >
-                      <ShoppingCart size={16} />
-                   </button>
-                </div>
-              </Link>
-
-              <div className="p-4 md:p-5 flex-1 flex flex-col items-center text-center">
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">
-                  {product.category || "ALDAY"}
-                </p>
-                <Link to={`/product/${product.id}`}>
-                  <h3 className="text-sm font-bold text-gray-900 leading-snug mb-3 hover:text-[#C5A059] transition-colors line-clamp-1">
-                    {product.name}
-                  </h3>
+                  <div className="hidden lg:flex absolute inset-0 bg-black/5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 items-center justify-center gap-3 z-10">
+                     <button 
+                        onClick={(e) => { e.preventDefault(); navigate(`/product/${uniqueId}`); }} 
+                        className="bg-white p-3 rounded-full shadow-lg hover:bg-black hover:text-white transition-all transform translate-y-4 group-hover/card:translate-y-0 duration-300"
+                     >
+                        <Eye size={16} />
+                     </button>
+                     <button 
+                        onClick={(e) => handleAddToCart(e, product)} 
+                        className="bg-white p-3 rounded-full shadow-lg hover:bg-black hover:text-white transition-all transform translate-y-4 group-hover/card:translate-y-0 duration-500"
+                     >
+                        <ShoppingCart size={16} />
+                     </button>
+                  </div>
                 </Link>
-                <div className="flex items-center gap-2 mb-4 md:mb-5 mt-auto">
-                  {product.price < product.mrp && (
-                    <span className="text-xs text-gray-400 line-through font-light">₹{product.mrp}</span>
-                  )}
-                  <span className="text-sm font-black text-gray-900">₹{product.price}</span>
+
+                <div className="p-4 md:p-5 flex-1 flex flex-col items-center text-center">
+                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5 line-clamp-1">
+                    {displayCategory}
+                  </p>
+                  <Link to={`/product/${uniqueId}`}>
+                    <h3 className="text-sm font-bold text-gray-900 leading-snug mb-3 hover:text-[#C5A059] transition-colors line-clamp-1">
+                      {product.name}
+                    </h3>
+                  </Link>
+                  <div className="flex items-center gap-2 mb-4 md:mb-5 mt-auto">
+                    {product.mrp > product.price && (
+                      <span className="text-xs text-gray-400 line-through font-light">₹{product.mrp}</span>
+                    )}
+                    <span className="text-sm font-black text-gray-900">₹{product.price}</span>
+                  </div>
+                  <button 
+                     onClick={(e) => handleAddToCart(e, product)} 
+                     className="w-full bg-black text-white py-3 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-[#C5A059] transition-colors rounded-sm flex items-center justify-center gap-2"
+                  >
+                    Add To Cart
+                  </button>
                 </div>
-                <button 
-                   onClick={(e) => handleAddToCart(e, product)} 
-                   className="w-full bg-black text-white py-3 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-[#C5A059] transition-colors rounded-sm flex items-center justify-center gap-2"
-                >
-                  Add To Cart
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

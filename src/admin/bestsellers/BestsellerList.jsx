@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import API from '../../api/axiosInstance';
+// ✅ 1. Import the centralized service instead of raw API
+import productService from '../../api/productService';
 import { Star } from 'lucide-react';
 
 const BestsellerList = () => {
@@ -10,10 +11,11 @@ const BestsellerList = () => {
     const fetchBestsellers = async () => {
       try {
         setIsLoading(true);
-        const response = await API.get('/product');
-        const allProducts = response.data.data || response.data.products || response.data || [];
+        // ✅ 2. Use the service method to fetch products
+        const data = await productService.getAllProducts();
+        const allProducts = data.data || data.products || data || [];
         
-        // 🚀 THE FIX: Read from the permanent saved stars
+        // Read from the permanent saved stars
         const savedBestsellers = JSON.parse(localStorage.getItem('permanentBestsellers') || '[]');
         
         // Filter ONLY the products whose IDs are in our saved list

@@ -1,36 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import API from '../api/axiosInstance'; // ✅ Added Axios for backend calls
 import { 
   Package, MapPin, User as UserIcon, LogOut, ChevronRight, 
-  Heart, CreditCard, Gift, Settings, Star, Download, Edit3, Trash2, ShieldCheck, Bell
+  Heart, CreditCard, Gift, Settings, Star, Download, Edit3, Trash2, ShieldCheck, Bell, Check
 } from 'lucide-react';
 
 const Account = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const { addToCart } = useCart();
   const { wishlistItems, toggleWishlist } = useWishlist(); 
   const navigate = useNavigate();
+  
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // --- BACKEND STATES ---
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  // Settings Form States
+  const [profileData, setProfileData] = useState({
+    fullName: user?.fullName || user?.name || '',
+    phone: user?.phone || ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    newPassword: ''
+  });
 
   // Route Protection
   if (!user) return <Navigate to="/login" replace />;
+
+  const displayName = user.fullName || user.name || "User";
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  // --- FETCH USER ORDERS ---
+  useEffect(() => {
+    const fetchMyOrders = async () => {
+      setLoadingOrders(true);
+      try {
+        // Adjust this endpoint to match your backend route for fetching a user's specific orders
+        const res = await API.get('/order/myorders');
+        const ordersArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        
+        // Sort newest first
+        const sortedOrders = ordersArray.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setOrders(sortedOrders);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+
+    fetchMyOrders();
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Safely get the user's name (whether the backend returns 'name' or 'fullName')
-  const displayName = user.fullName || user.name || "User";
+  // --- HANDLE PROFILE UPDATE ---
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      // Adjust this endpoint to match your backend user update route
+      const res = await API.put('/user/profile', profileData);
+      
+      // Update local AuthContext user state
+      if (res.data && res.data.user) {
+        setUser(res.data.user);
+        // Also update localStorage if your AuthContext doesn't do it automatically
+        localStorage.setItem('alday_user', JSON.stringify(res.data.user));
+      }
+      
+      showToast("Profile updated successfully!");
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      alert(error.response?.data?.message || "Failed to update profile.");
+    }
+  };
 
-  // --- MOCK DATA FOR ORDERS ---
-  const mockOrders = [
-    { id: 'ALDAY-8832', date: 'Oct 12, 2023', status: 'Delivered', total: '₹2,450', items: 2 },
-    { id: 'ALDAY-7511', date: 'Sep 04, 2023', status: 'In Transit', total: '₹1,200', items: 1 },
-  ];
+  // --- HANDLE PASSWORD UPDATE ---
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword.length < 6) {
+      return alert("Password must be at least 6 characters long.");
+    }
+
+    try {
+      // Adjust this endpoint to match your backend password update route
+      await API.put('/user/update-password', { password: passwordData.newPassword });
+      setPasswordData({ newPassword: '' }); // Clear field
+      showToast("Password updated successfully!");
+    } catch (error) {
+      console.error("Password update failed:", error);
+      alert(error.response?.data?.message || "Failed to update password.");
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -85,51 +160,75 @@ const Account = () => {
           </div>
         );
 
-      // 2. ORDERS
+      // 2. ORDERS (Now using real database orders)
       case 'orders':
         return (
           <div className="animate-fade-in">
             <h2 className="text-xl font-serif font-bold uppercase tracking-widest mb-6">Order History</h2>
-            <div className="space-y-6">
-              {mockOrders.map((order, idx) => (
-                <div key={idx} className="bg-white border border-gray-200 rounded-sm shadow-sm p-6">
-                  <div className="flex flex-wrap justify-between items-center border-b border-gray-100 pb-4 mb-4 gap-4">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest">Order Number</p>
-                      <p className="font-bold"># {order.id}</p>
+            
+            {loadingOrders ? (
+              <div className="flex justify-center py-20">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-black"></div>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-sm p-12 text-center">
+                <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-bold mb-2">No orders yet</h3>
+                <p className="text-gray-500 text-sm mb-6">When you place an order, it will appear here.</p>
+                <Link to="/view-all" className="bg-black text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#C5A059] transition-colors rounded-sm">
+                  Start Shopping
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {orders.map((order) => (
+                  <div key={order._id} className="bg-white border border-gray-200 rounded-sm shadow-sm p-6">
+                    <div className="flex flex-wrap justify-between items-center border-b border-gray-100 pb-4 mb-4 gap-4">
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Order Number</p>
+                        <p className="font-bold"># {order._id.substring(0, 8).toUpperCase()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Date Placed</p>
+                        <p className="font-bold">
+                          {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Total Amount</p>
+                        <p className="font-bold">₹{(order.totalPrice || order.price || 0).toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <span className={`text-[9px] font-bold uppercase px-3 py-1.5 rounded-sm tracking-widest ${
+                          order.status === 'Delivered' ? 'bg-green-50 text-green-700 border border-green-100' : 
+                          order.status === 'Cancelled' ? 'bg-red-50 text-red-700 border border-red-100' : 
+                          'bg-yellow-50 text-yellow-700 border border-yellow-100'
+                        }`}>
+                          {order.status || 'Processing'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest">Date Placed</p>
-                      <p className="font-bold">{order.date}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest">Total Amount</p>
-                      <p className="font-bold">{order.total}</p>
-                    </div>
-                    <div>
-                      <span className={`text-[9px] font-bold uppercase px-3 py-1.5 rounded-sm tracking-widest ${order.status === 'Delivered' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}>
-                        {order.status}
-                      </span>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                      <p className="text-sm text-gray-600 font-light">
+                        {order.orderItems?.length || 0} {order.orderItems?.length === 1 ? 'Item' : 'Items'} in this order
+                      </p>
+                      <div className="flex gap-3">
+                        <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors border border-gray-200 px-4 py-3 rounded-sm hover:bg-gray-50">
+                          <Download size={14} /> Invoice
+                        </button>
+                        <button 
+                          onClick={() => navigate('/track-order')}
+                          className="flex-1 sm:flex-none bg-black text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-[#C5A059] transition-colors"
+                        >
+                          Track Order
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <p className="text-sm text-gray-600 font-light">{order.items} Items in this order</p>
-                    <div className="flex gap-3">
-                      <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors border border-gray-200 px-4 py-3 rounded-sm hover:bg-gray-50">
-                        <Download size={14} /> Invoice
-                      </button>
-                      <button 
-                        onClick={() => navigate('/track-order')}
-                        className="flex-1 sm:flex-none bg-black text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-[#C5A059] transition-colors"
-                      >
-                        Track Order
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
 
@@ -140,14 +239,18 @@ const Account = () => {
             <h2 className="text-xl font-serif font-bold uppercase tracking-widest mb-6">My Wishlist</h2>
             {wishlistItems.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {wishlistItems.map((item) => (
-                  <div key={item.id} className="flex border border-gray-200 p-4 rounded-sm bg-white group transition-shadow hover:shadow-md">
+                {wishlistItems.map((item) => {
+                  const uniqueId = item.productId || item._id || item.id;
+                  return (
+                  <div key={uniqueId} className="flex border border-gray-200 p-4 rounded-sm bg-white group transition-shadow hover:shadow-md">
                     <div className="w-24 h-24 bg-[#F9F9F9] flex-shrink-0">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-contain mix-blend-multiply p-2" />
+                      <img src={item.image || item.images?.[0]} alt={item.name} className="w-full h-full object-contain mix-blend-multiply p-2" />
                     </div>
                     <div className="ml-4 flex flex-col justify-center flex-1">
-                      <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold mb-1">{item.category}</p>
-                      <Link to={`/product/${item.id}`} className="font-bold text-sm mb-1 hover:text-[#C5A059] transition-colors line-clamp-1">{item.name}</Link>
+                      <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold mb-1">
+                        {Array.isArray(item.category) ? item.category.join(', ') : (item.category || 'Care')}
+                      </p>
+                      <Link to={`/product/${uniqueId}`} className="font-bold text-sm mb-1 hover:text-[#C5A059] transition-colors line-clamp-1">{item.name}</Link>
                       <p className="font-bold text-gray-900 mb-3 text-sm">₹{item.price}</p>
                       <div className="flex items-center gap-3 mt-auto">
                         <button 
@@ -165,7 +268,7 @@ const Account = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             ) : (
               <div className="bg-white p-12 text-center border border-gray-100 rounded-sm py-24">
@@ -195,7 +298,7 @@ const Account = () => {
                   123 Wellness Avenue, Bandra West<br />
                   Mumbai, Maharashtra 400050, India
                 </p>
-                <p className="text-sm text-gray-600 mb-6 font-light">Phone: {user.phone}</p>
+                <p className="text-sm text-gray-600 mb-6 font-light">Phone: {user.phone || 'Not provided'}</p>
                 <div className="flex gap-4 border-t border-gray-200 pt-4">
                   <button className="text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors flex items-center gap-1.5"><Edit3 size={14}/> Edit</button>
                   <button className="text-[10px] font-bold uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors flex items-center gap-1.5"><Trash2 size={14}/> Delete</button>
@@ -233,41 +336,69 @@ const Account = () => {
           </div>
         );
 
-      // 6. SETTINGS
+      // 6. SETTINGS (Wired to Backend)
       case 'settings':
         return (
           <div className="animate-fade-in space-y-8">
             <h2 className="text-xl font-serif font-bold uppercase tracking-widest mb-6">Profile Settings</h2>
             
+            {/* Update Profile Form */}
             <div className="bg-white p-8 border border-gray-200 rounded-sm shadow-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest border-b border-gray-100 pb-4 mb-6">Personal Information</h3>
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-6" onSubmit={handleUpdateProfile}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Full Name</label>
-                    <input type="text" defaultValue={displayName} className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" />
+                    <input 
+                      type="text" 
+                      value={profileData.fullName}
+                      onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                      className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" 
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Phone Number</label>
-                    <input type="tel" defaultValue={user.phone} className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" />
+                    <input 
+                      type="tel" 
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                      className="w-full border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none transition-colors bg-[#FBFBFB] focus:bg-white" 
+                    />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Email Address</label>
-                    <input type="email" defaultValue={user.email} disabled className="w-full border border-gray-200 bg-gray-50 rounded-sm py-3.5 px-4 text-sm text-gray-400 cursor-not-allowed" />
+                    <input 
+                      type="email" 
+                      defaultValue={user.email} 
+                      disabled 
+                      className="w-full border border-gray-200 bg-gray-50 rounded-sm py-3.5 px-4 text-sm text-gray-400 cursor-not-allowed" 
+                    />
                   </div>
                 </div>
-                <button className="bg-black text-white px-10 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:bg-[#C5A059] transition-all">Save Changes</button>
+                <button type="submit" className="bg-black text-white px-10 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:bg-[#C5A059] transition-all">
+                  Save Changes
+                </button>
               </form>
             </div>
 
+            {/* Update Password Form */}
             <div className="bg-white p-8 border border-gray-200 rounded-sm shadow-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest border-b border-gray-100 pb-4 mb-6">Security</h3>
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-6" onSubmit={handleUpdatePassword}>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">New Password</label>
-                  <input type="password" placeholder="••••••••" className="w-full max-w-md border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none bg-[#FBFBFB] focus:bg-white" />
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ newPassword: e.target.value })}
+                    required
+                    className="w-full max-w-md border border-gray-300 rounded-sm py-3.5 px-4 text-sm focus:border-black outline-none bg-[#FBFBFB] focus:bg-white" 
+                  />
                 </div>
-                <button className="border border-black text-black px-10 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:bg-black hover:text-white transition-all">Update Password</button>
+                <button type="submit" className="border border-black text-black px-10 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:bg-black hover:text-white transition-all">
+                  Update Password
+                </button>
               </form>
             </div>
           </div>
@@ -286,6 +417,14 @@ const Account = () => {
           overflow-x: clip !important; 
         }
       `}</style>
+
+      {/* TOAST NOTIFICATION */}
+      {toastMsg && (
+        <div className="fixed top-24 right-6 bg-black text-white px-6 py-3 rounded-sm shadow-2xl z-[200] animate-fade-in-up flex items-center gap-3 border border-gray-800">
+          <Check size={16} className="text-[#C5A059]" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">{toastMsg}</span>
+        </div>
+      )}
 
       {/* Page Header */}
       <div className="bg-white border-b border-gray-200 pt-12 pb-12 ">

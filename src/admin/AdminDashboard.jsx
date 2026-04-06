@@ -1,78 +1,96 @@
 import React, { useState, useEffect } from 'react';
-import API from '../api/axiosInstance';
-import { 
-  IndianRupee, 
-  ShoppingBag, 
-  Package, 
-  Users, 
-  TrendingUp, 
-  RefreshCw, 
-  ArrowRight,
-  Clock
-} from 'lucide-react';
-import { Link } from 'react-router-dom'; // Assuming you use react-router
+import { Link } from 'react-router-dom';
+import API from '../api/axiosInstance'; 
+import { RefreshCw, TrendingUp, ShoppingBag, Package, Users, ArrowRight, IndianRupee, Clock } from 'lucide-react';
 
-const Dashboard = () => {
-  const [stats, setStats] = useState({
-    revenue: 0,
-    orders: 0,
-    products: 0,
-    customers: 0
+const AdminDashboard = () => {
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashboardData, setDashboardData] = useState({
+    totalRevenue: 0,
+    activeOrders: 0,
+    totalProducts: 0,
+    customers: 0,
+    recentOrders: [], // Added to hold the latest orders
   });
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Dynamic greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const fetchDashboardData = async () => {
-    setIsLoading(true);
+    setIsRefreshing(true);
     try {
-      // We use Promise.allSettled so if one endpoint fails, it doesn't crash the whole dashboard
-      const [productsRes, ordersRes, usersRes] = await Promise.allSettled([
-        API.get('/product'),
-        API.get('/order'), // Update this if your endpoint is different (e.g. '/orders')
-        API.get('/user')   // Update this if your endpoint is different
-      ]);
+      // 1. FETCH ORDERS, CALCULATE REVENUE & GET RECENT
+      let revenue = 0;
+      let active = 0;
+      let latest = [];
+      try {
+        const ordersRes = await API.get('/admin/order');
+        const ordersArray = Array.isArray(ordersRes.data)
+          ? ordersRes.data
+          : (Array.isArray(ordersRes.data?.data) ? ordersRes.data.data : []);
 
-      let totalProducts = 0;
-      if (productsRes.status === 'fulfilled' && productsRes.value.data) {
-        // Handle both pagination format {total: X} or array format
-        totalProducts = productsRes.value.data.total || productsRes.value.data.data?.length || 0;
-      }
-
-      let totalOrders = 0;
-      let calculatedRevenue = 0;
-      let latestOrders = [];
-
-      if (ordersRes.status === 'fulfilled' && ordersRes.value.data) {
-        const ordersData = ordersRes.value.data.data || ordersRes.value.data || [];
-        totalOrders = ordersData.length || 0;
-        
-        // Safely calculate revenue (assuming orders have a 'totalPrice' or 'total' field)
-        calculatedRevenue = ordersData.reduce((acc, order) => {
-          const orderTotal = Number(order.totalPrice || order.total || 0);
-          return acc + (isNaN(orderTotal) ? 0 : orderTotal);
+        // Calculate Revenue
+        revenue = ordersArray.reduce((acc, order) => {
+          return acc + (order.totalPrice || order.price || order.amount || 0);
         }, 0);
 
-        // Get 5 most recent orders
-        latestOrders = ordersData.slice(0, 5);
+        // Count Active Orders
+        active = ordersArray.filter(order =>
+          order.status === 'Processing' || order.status === 'Confirmed' || order.status === 'Pending'
+        ).length;
+
+        // Sort orders by date (newest first) and grab the top 5
+        const sortedOrders = [...ordersArray].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        latest = sortedOrders.slice(0, 5);
+
+      } catch (err) {
+        console.error("Failed to fetch orders:", err);
       }
 
-      let totalUsers = 0;
-      if (usersRes.status === 'fulfilled' && usersRes.value.data) {
-        totalUsers = usersRes.value.data.total || usersRes.value.data.data?.length || 0;
+      // 2. FETCH USERS 
+      let usersCount = 0;
+      try {
+        const usersRes = await API.get('/auth/users');
+        const usersArray = Array.isArray(usersRes.data)
+          ? usersRes.data
+          : (Array.isArray(usersRes.data?.data) ? usersRes.data.data : []);
+        usersCount = usersArray.length;
+      } catch (error) {
+        console.error("Failed to fetch users.", error);
       }
 
-      setStats({
-        revenue: calculatedRevenue,
-        products: totalProducts,
-        orders: totalOrders,
-        customers: totalUsers
+      // 3. FETCH PRODUCTS
+      let productsCount = 0;
+      try {
+        const productsRes = await API.get('/product');
+        const productsArray = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : (Array.isArray(productsRes.data?.data) ? productsRes.data.data : []);
+        productsCount = productsArray.length;
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      }
+
+      // 4. UPDATE ALL STATE
+      setDashboardData({
+        totalRevenue: revenue,
+        activeOrders: active,
+        totalProducts: productsCount,
+        customers: usersCount,
+        recentOrders: latest
       });
-      setRecentOrders(latestOrders);
 
     } catch (error) {
-      console.error("Dashboard fetch error:", error);
+      console.error("Dashboard master fetch error:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -80,189 +98,214 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // Format currency beautifully
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  // Custom Skeleton Loader Component for the numbers
+  const Skeleton = () => (
+    <div className="h-10 w-24 bg-gray-200/50 rounded animate-pulse my-1"></div>
+  );
 
   return (
-    <div className="animate-fade-in space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+    <div className="p-6 md:p-8 bg-[#F8F9FA] min-h-screen animate-fade-in">
+
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">Welcome back, Admin. Here is what's happening with your store today.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+            {getGreeting()}, Admin
+          </h1>
+          <p className="text-gray-500 text-sm mt-2">
+            Here is your store's performance overview for today.
+          </p>
         </div>
-        <button 
+        <button
           onClick={fetchDashboardData}
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-slate-900 transition-all font-semibold text-sm disabled:opacity-50"
+          disabled={isRefreshing}
+          className="flex items-center gap-2 bg-white border border-gray-200 px-5 py-2.5 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm text-sm font-semibold text-gray-700 disabled:opacity-50"
         >
-          <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
-          {isLoading ? 'Refreshing...' : 'Refresh Data'}
+          <RefreshCw size={16} className={`${isRefreshing ? 'animate-spin text-indigo-600' : 'text-gray-500'}`} /> 
+          {isRefreshing ? 'Syncing...' : 'Refresh Data'}
         </button>
       </div>
 
-      {/* Stats Grid - Premium Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Revenue Card */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl shadow-lg text-white relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 text-white/10 group-hover:scale-110 transition-transform duration-500">
-            <IndianRupee size={100} />
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+
+        {/* Revenue Card (Dark Gradient Theme) */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Revenue</h3>
+            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+               <IndianRupee size={20} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="relative z-10">
-            <p className="text-slate-300 text-sm font-semibold uppercase tracking-wider mb-2">Total Revenue</p>
-            <h3 className="text-3xl font-bold">{formatCurrency(stats.revenue)}</h3>
-            <div className="mt-4 flex items-center gap-1 text-emerald-400 text-sm font-medium">
-              <TrendingUp size={16} />
+          <div>
+            {loading ? <div className="h-10 w-32 bg-white/10 rounded animate-pulse my-1"></div> : (
+              <p className="text-4xl font-black mb-2 tracking-tight">
+                ₹{dashboardData.totalRevenue.toLocaleString('en-IN')}
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-4 bg-emerald-400/10 w-fit px-2.5 py-1 rounded-full">
+              <TrendingUp size={14} />
               <span>Lifetime Earnings</span>
             </div>
           </div>
+          <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
+            <IndianRupee size={120} />
+          </div>
         </div>
 
-        {/* Orders Card */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Active Orders</p>
-              <h3 className="text-3xl font-bold text-gray-900">{stats.orders}</h3>
-            </div>
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-              <ShoppingBag size={24} />
+        {/* Active Orders Card */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md hover:border-blue-100 transition-all duration-300 relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Orders</h3>
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+              <ShoppingBag size={20} />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-4 font-medium">Processing & Delivered</p>
+          <div>
+            {loading ? <Skeleton /> : (
+              <p className="text-4xl font-black text-gray-900 mb-1">{dashboardData.activeOrders}</p>
+            )}
+            <p className="text-gray-500 text-sm mb-4">Processing & Delivered</p>
+            
+            <Link to="/admin/orders" className="flex items-center gap-1 text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors group/link w-fit">
+              View Orders <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
         </div>
 
-        {/* Products Card */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Total Products</p>
-              <h3 className="text-3xl font-bold text-gray-900">{stats.products}</h3>
-            </div>
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-              <Package size={24} />
+        {/* Total Products Card */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md hover:border-emerald-100 transition-all duration-300 relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Products</h3>
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+              <Package size={20} />
             </div>
           </div>
-          <Link to="/admin/products" className="text-sm text-emerald-600 mt-4 font-bold flex items-center gap-1 hover:gap-2 transition-all">
-            Manage Catalog <ArrowRight size={16} />
-          </Link>
+          <div>
+            {loading ? <Skeleton /> : (
+              <p className="text-4xl font-black text-gray-900 mb-1">{dashboardData.totalProducts}</p>
+            )}
+            <p className="text-gray-500 text-sm mb-4">Live on Storefront</p>
+            
+            <Link to="/admin/products" className="flex items-center gap-1 text-emerald-600 text-sm font-bold hover:text-emerald-800 transition-colors group/link w-fit">
+              Manage Catalog <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-emerald-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
         </div>
 
-        {/* Customers Card */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase tracking-wider mb-2">Customers</p>
-              <h3 className="text-3xl font-bold text-gray-900">{stats.customers}</h3>
-            </div>
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-              <Users size={24} />
+        {/* Customers Card (Link Removed) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md hover:border-purple-100 transition-all duration-300 relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Customers</h3>
+            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+              <Users size={20} />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-4 font-medium">Registered Accounts</p>
+          <div>
+            {loading ? <Skeleton /> : (
+              <p className="text-4xl font-black text-gray-900 mb-1">{dashboardData.customers}</p>
+            )}
+            <p className="text-gray-500 text-sm mb-4">Registered Accounts</p>
+            
+            <div className="flex items-center gap-1.5 text-gray-400 text-sm font-medium w-fit mt-1">
+              <span className="w-2 h-2 rounded-full bg-green-400"></span> Growing Community
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
         </div>
+
       </div>
 
-      {/* Bottom Section Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Recent Orders Table (Takes up 2/3 of the screen) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
-            <button className="text-sm font-bold text-indigo-600 hover:text-indigo-800">View All</button>
+      {/* Recent Orders Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
+              <Clock size={18} className="text-gray-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">Latest Orders</h2>
           </div>
-          
-          <div className="overflow-x-auto flex-grow">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-gray-50/80 text-xs uppercase tracking-wider text-gray-500 font-bold">
+          <Link 
+            to="/admin/orders" 
+            className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 group bg-blue-50 px-4 py-2 rounded-lg transition-colors"
+          >
+            View All <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left whitespace-nowrap">
+            <thead className="bg-white text-gray-400 text-[10px] uppercase tracking-[0.2em] font-bold border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4">Order ID</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Customer</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
                 <tr>
-                  <th className="p-4">Order ID</th>
-                  <th className="p-4">Customer</th>
-                  <th className="p-4">Date</th>
-                  <th className="p-4">Total</th>
-                  <th className="p-4">Status</th>
+                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 animate-pulse">Loading recent orders...</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan="5" className="p-8 text-center text-gray-400 font-medium">
-                      <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-gray-300" />
-                      Loading orders...
-                    </td>
-                  </tr>
-                ) : recentOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="p-12 text-center text-gray-500">
-                      <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <ShoppingBag size={24} className="text-gray-300" />
-                      </div>
-                      <p className="font-medium text-gray-900 mb-1">No recent orders yet</p>
-                      <p className="text-sm">When customers place orders, they will appear here.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  recentOrders.map((order, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="p-4 text-sm font-semibold text-gray-900">#{order._id?.substring(0, 8) || 'N/A'}</td>
-                      <td className="p-4 text-sm text-gray-600">{order.user?.name || 'Guest User'}</td>
-                      <td className="p-4 text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
-                      <td className="p-4 text-sm font-bold text-gray-900">₹{order.totalPrice || order.total || 0}</td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-sm text-[10px] uppercase tracking-widest font-bold bg-yellow-100 text-yellow-800">
+              ) : dashboardData.recentOrders.length > 0 ? (
+                dashboardData.recentOrders.map((order) => {
+                  
+                  // Safe extraction for customer name based on common schemas
+                  const customerName = order.user?.fullName || order.shippingAddress?.fullName || 'Guest User';
+                  
+                  // Status Badge Colors
+                  const statusColors = {
+                    'Delivered': 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                    'Processing': 'bg-blue-50 text-blue-600 border-blue-200',
+                    'Pending': 'bg-yellow-50 text-yellow-600 border-yellow-200',
+                    'Cancelled': 'bg-red-50 text-red-600 border-red-200',
+                  };
+                  const badgeStyle = statusColors[order.status] || 'bg-gray-50 text-gray-600 border-gray-200';
+
+                  return (
+                    <tr key={order._id} className="hover:bg-gray-50/80 transition-colors group">
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        #{order._id.substring(0, 8).toUpperCase()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        {customerName}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${badgeStyle}`}>
                           {order.status || 'Pending'}
                         </span>
                       </td>
+                      <td className="px-6 py-4 text-sm font-black text-gray-900 text-right">
+                        ₹{(order.totalPrice || order.price || order.amount || 0).toLocaleString('en-IN')}
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <ShoppingBag size={32} className="mb-3 text-gray-300" />
+                      <p className="text-sm font-medium text-gray-600">No orders received yet.</p>
+                      <p className="text-xs">When customers check out, their orders will appear here.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-
-        {/* Store Insights / Quick Actions Sidebar (Takes up 1/3) */}
-        <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-6 text-white flex flex-col justify-between">
-          <div>
-            <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <Clock size={20} className="text-indigo-400" /> Store Insights
-            </h2>
-            
-            <div className="space-y-4">
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                <p className="text-slate-400 text-sm mb-1">Top Selling Category</p>
-                <p className="font-bold text-lg text-emerald-400">Haircare</p>
-              </div>
-              
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                <p className="text-slate-400 text-sm mb-1">Avg. Order Value</p>
-                <p className="font-bold text-lg text-white">
-                  {stats.orders > 0 ? formatCurrency(stats.revenue / stats.orders) : '₹0'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <Link 
-              to="/admin/products" 
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg shadow-indigo-900/50"
-            >
-              + Add New Formulation
-            </Link>
-          </div>
-        </div>
-
       </div>
+
     </div>
   );
 };
 
-export default Dashboard;
+export default AdminDashboard;

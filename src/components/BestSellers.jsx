@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Eye, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import API from '../api/axiosInstance'; 
+// ✅ 1. Import the centralized service instead of raw API
+import productService from '../api/productService'; 
 import { useCart } from '../context/CartContext';
 
 const BestSellers = () => {
@@ -15,8 +16,9 @@ const BestSellers = () => {
     const fetchBestSellers = async () => {
       try {
         setIsLoading(true);
-        const response = await API.get('/product');
-        const allProducts = response.data.data || response.data.products || [];
+        // ✅ 2. Use the service method to fetch products
+        const data = await productService.getAllProducts();
+        const allProducts = data.data || data.products || [];
         
         let best = allProducts.filter(product => product.bestSeller === true);
 
@@ -80,7 +82,7 @@ const BestSellers = () => {
                 
                 <Link to={`/product/${uniqueId}`} className="relative w-full aspect-[4/5] bg-[#F9F9F9] overflow-hidden block rounded-t-sm flex-shrink-0">
                   
-                  {/* ✅ NEW: Smart Stacking Badges for Sale & Bestseller */}
+                  {/* Smart Stacking Badges for Sale & Bestseller */}
                   <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
                     {product.sale && (
                       <span className="bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 shadow-sm w-fit">

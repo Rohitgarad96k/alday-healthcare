@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../api/axiosInstance'; 
+// ✅ 1. Import the centralized auth service
+import authService from '../api/authService'; 
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -15,16 +16,15 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await API.post('/auth/login', {
+      // ✅ 2. Use the service method to login
+      const data = await authService.login({
         email,
         password,
       });
 
-      const { token, user } = response.data;
+      const { token, user } = data;
 
       // --- THE CRITICAL FIX: Verify Admin Role ---
-      // Adjust 'role' and 'admin' based on exactly what your backend returns.
-      // If your backend doesn't return a role, you MUST add it to your backend schema.
       if (user && user.role !== 'admin') {
         setError("Access Denied: This account does not have administrator privileges.");
         setIsLoading(false);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import API from '../../api/axiosInstance'; 
-import { Package, AlertCircle, Eye, Loader2 } from 'lucide-react'; // Added icons for polish
+import { Package, AlertCircle, Eye, Loader2 } from 'lucide-react'; 
+// ✅ 1. Import the centralized service
+import orderService from '../../api/orderService';
 
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
@@ -12,9 +13,10 @@ const OrderList = () => {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      const response = await API.get('/admin/order');
+      // ✅ 2. Use the service method
+      const data = await orderService.getAllOrders();
       
-      const fetchedOrders = response.data.data || response.data || [];
+      const fetchedOrders = data.data || data || [];
       setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []); 
       setError('');
     } catch (err) {
@@ -39,8 +41,8 @@ const OrderList = () => {
         (order._id || order.id) === orderId ? { ...order, status: newStatus } : order
       ));
 
-      // Fire off the API call
-      await API.patch(`/admin/order/${orderId}/status`, { status: newStatus });
+      // ✅ 3. Use the service method
+      await orderService.updateOrderStatus(orderId, newStatus);
       
     } catch (err) {
       console.error("Failed to update order status:", err);
@@ -52,7 +54,6 @@ const OrderList = () => {
     }
   };
 
-  // Safe Date Formatting
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -124,7 +125,7 @@ const OrderList = () => {
                     </td>
                     
                     <td className="p-4 font-bold text-slate-900">
-                      ₹{(order.totalAmount || order.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      ₹{(order.totalAmount || order.totalPrice || order.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     
                     <td className="p-4">
@@ -147,7 +148,6 @@ const OrderList = () => {
                           <option value="DELIVERED">Delivered</option>
                           <option value="CANCELLED">Cancelled</option>
                         </select>
-                        {/* Show a mini spinner next to the select if this exact row is updating */}
                         {updatingId === orderId && (
                            <Loader2 className="absolute right-2 w-3 h-3 animate-spin text-gray-500" />
                         )}

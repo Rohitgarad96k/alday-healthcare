@@ -6,10 +6,12 @@ import {
   MapPin, Play, X, Check
 } from 'lucide-react';
 
-// REMOVED STATIC IMPORT: import { products } from '../data'; 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
+
+import productService from '../api/productService'; 
+import API from '../api/axiosInstance'; // ✅ Needed for posting reviews
 
 const ProductDetails = () => {
   const { id } = useParams(); 
@@ -26,19 +28,32 @@ const ProductDetails = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-// --- FETCH PRODUCT DATA ---
+  // --- UI STATES ---
+  const [qty, setQty] = useState(1);
+  const [activeImg, setActiveImg] = useState(0);
+  const [openAccordion, setOpenAccordion] = useState('desc');
+  const [pincode, setPincode] = useState('');
+  const [deliveryMsg, setDeliveryMsg] = useState('');
+  const [showVideo, setShowVideo] = useState(false);
+  const [upsellSelected, setUpsellSelected] = useState(false);
+  const [zoomStyle, setZoomStyle] = useState({ display: 'none' });
+  const [toastMsg, setToastMsg] = useState(null);
+  
+  // --- REVIEW STATES ---
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // --- FETCH PRODUCT DATA ---
   useEffect(() => {
     const fetchProductData = async () => {
       setIsLoading(true);
       try {
-        // Fetch ALL products first
-        const allRes = await fetch('https://aldey-backend.vercel.app/api/product');
-        if (!allRes.ok) throw new Error('Failed to fetch products');
+        const data = await productService.getAllProducts('?limit=1000');
+        const allProducts = data.data || data.products || [];
         
-        const allData = await allRes.json();
-        const allProducts = allData.data || allData.products || [];
-        
-        // Find our specific product from the full list (checks all ID types!)
         const foundProduct = allProducts.find(p => p._id === id || p.productId === id || String(p.id) === String(id));
         
         if (!foundProduct) {
@@ -47,7 +62,6 @@ const ProductDetails = () => {
 
         setProduct(foundProduct);
 
-        // Filter out the current product to make the "Related Products" list
         const filteredRelated = allProducts.filter(p => p._id !== id && p.productId !== id);
         setRelatedProducts(filteredRelated.slice(0, 4));
 
@@ -62,23 +76,11 @@ const ProductDetails = () => {
     fetchProductData();
     window.scrollTo({ top: 0, behavior: 'instant' });
     
-    // Reset states when product changes
+    // Reset states
     setActiveImg(0);
     setQty(1);
     setUpsellSelected(false);
   }, [id]);
-
-  // --- UI STATES ---
-  const [qty, setQty] = useState(1);
-  const [activeImg, setActiveImg] = useState(0);
-  const [openAccordion, setOpenAccordion] = useState('desc');
-  const [pincode, setPincode] = useState('');
-  const [deliveryMsg, setDeliveryMsg] = useState('');
-  const [showVideo, setShowVideo] = useState(false);
-  const [upsellSelected, setUpsellSelected] = useState(false);
-  const [zoomStyle, setZoomStyle] = useState({ display: 'none' });
-  const [toastMsg, setToastMsg] = useState(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
 
   // --- LOADING & ERROR STATES ---
   if (isLoading) {
@@ -99,7 +101,8 @@ const ProductDetails = () => {
     );
   }
 
-  // --- CALCULATIONS ---
+  // --- CALCULATIONS & OUT OF STOCK CHECK ---
+  const isOutOfStock = !product.countInStock || product.countInStock <= 0; // ✅ OOS Logic
   const upsellProduct = relatedProducts.length > 0 ? relatedProducts[0] : null;
   const shippingThreshold = 999;
   const mainTotal = (product.price || 0) * qty;
@@ -131,6 +134,7 @@ const ProductDetails = () => {
   };
 
   const handleAddToCart = () => {
+    if (isOutOfStock) return; // Safeguard
     addToCart(product, qty);
     if (upsellSelected && upsellProduct) {
       addToCart(upsellProduct, 1);
@@ -144,6 +148,7 @@ const ProductDetails = () => {
     showToast(isInWishlist(productId) ? "Removed from Wishlist" : "Added to Wishlist");
   };
 
+  // --- REVIEW HANDLERS ---
   const handleWriteReviewClick = () => {
     if (user) {
       setShowReviewModal(true); 
@@ -152,14 +157,46 @@ const ProductDetails = () => {
     }
   };
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    setShowReviewModal(false);
-    showToast("Review submitted successfully! Pending approval.");
+    if (!user) return;
+    
+    setIsSubmittingReview(true);
+    try {
+      // ✅ Adjust this endpoint to match your actual backend review route
+      await API.post(`/product/${productId}/review`, { 
+        rating, 
+        title: reviewTitle, 
+        comment: reviewComment 
+      });
+      
+      setShowReviewModal(false);
+      showToast("Review submitted successfully!");
+      
+      // Optimistic UI update so the user sees their review immediately
+      if (!product.reviews) product.reviews = [];
+      product.reviews.unshift({
+        name: user.fullName || user.name,
+        rating,
+        title: reviewTitle,
+        comment: reviewComment,
+        createdAt: new Date().toISOString()
+      });
+      
+      // Reset form
+      setReviewTitle('');
+      setReviewComment('');
+      setRating(5);
+    } catch (error) {
+      console.error("Review submission failed:", error);
+      alert(error.response?.data?.message || "Failed to submit review.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
-  // Safe image array fallback
   const displayImages = product.images && product.images.length > 0 ? product.images : [product.image || product.imageUrl || "https://via.placeholder.com/600"];
+  const reviewsList = product.reviews || []; // ✅ Use real reviews array
 
   return (
     <div className="bg-white font-sans text-gray-900 pb-20 md:pb-0 relative">
@@ -189,19 +226,47 @@ const ProductDetails = () => {
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                  <div>
                    <label className="text-xs font-bold uppercase tracking-widest text-gray-700 block mb-2">Rating</label>
-                   <div className="flex gap-2 text-gray-300">
-                     {[1,2,3,4,5].map(i => <Star key={i} size={28} className="hover:text-yellow-500 hover:fill-yellow-500 cursor-pointer transition-colors" />)}
+                   <div className="flex gap-2">
+                     {[1,2,3,4,5].map(i => (
+                       <Star 
+                         key={i} 
+                         size={28} 
+                         fill={i <= rating ? "currentColor" : "none"}
+                         className={`cursor-pointer transition-colors ${i <= rating ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`} 
+                         onClick={() => setRating(i)}
+                       />
+                     ))}
                    </div>
                  </div>
                  <div>
                    <label className="text-xs font-bold uppercase tracking-widest text-gray-700 block mb-2">Review Title</label>
-                   <input type="text" required className="w-full border border-gray-300 p-3 text-sm rounded-sm focus:border-black outline-none" placeholder="E.g. Visibly transformed my routine!" />
+                   <input 
+                     type="text" 
+                     required 
+                     value={reviewTitle}
+                     onChange={(e) => setReviewTitle(e.target.value)}
+                     className="w-full border border-gray-300 p-3 text-sm rounded-sm focus:border-black outline-none" 
+                     placeholder="E.g. Visibly transformed my routine!" 
+                   />
                  </div>
                  <div>
                    <label className="text-xs font-bold uppercase tracking-widest text-gray-700 block mb-2">Your Experience</label>
-                   <textarea required rows="4" className="w-full border border-gray-300 p-3 text-sm rounded-sm focus:border-black outline-none" placeholder="Tell us how you used it and what results you saw..."></textarea>
+                   <textarea 
+                     required 
+                     rows="4" 
+                     value={reviewComment}
+                     onChange={(e) => setReviewComment(e.target.value)}
+                     className="w-full border border-gray-300 p-3 text-sm rounded-sm focus:border-black outline-none" 
+                     placeholder="Tell us how you used it and what results you saw..."
+                   ></textarea>
                  </div>
-                 <button type="submit" className="w-full bg-black text-white font-bold uppercase tracking-widest text-xs py-4 hover:bg-[#C5A059] transition-colors rounded-sm mt-4">Submit Review</button>
+                 <button 
+                   type="submit" 
+                   disabled={isSubmittingReview}
+                   className={`w-full text-white font-bold uppercase tracking-widest text-xs py-4 transition-colors rounded-sm mt-4 ${isSubmittingReview ? 'bg-gray-400' : 'bg-black hover:bg-[#C5A059]'}`}
+                 >
+                   {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                 </button>
               </form>
            </div>
         </div>
@@ -222,7 +287,9 @@ const ProductDetails = () => {
         {/* BREADCRUMBS */}
         <div className="text-[10px] md:text-xs text-gray-500 mb-6 uppercase tracking-widest flex items-center gap-2 flex-wrap">
           <Link to="/" className="hover:text-black transition-colors">Home</Link> / 
-          <Link to={`/view-all?cat=${product.category || product.concern}`} className="hover:text-black cursor-pointer transition-colors">{product.category || product.concern || "Shop"}</Link> / 
+          <Link to={`/view-all?cat=${product.category || product.concern}`} className="hover:text-black cursor-pointer transition-colors">
+            {Array.isArray(product.category) ? product.category[0] : (product.category || product.concern || "Shop")}
+          </Link> / 
           <span className="text-black font-bold border-b border-black pb-0.5">{product.name}</span>
         </div>
 
@@ -261,9 +328,15 @@ const ProductDetails = () => {
                    
                    <div className="absolute inset-0 pointer-events-none bg-no-repeat bg-[length:200%] z-20 transition-opacity duration-200" style={{...zoomStyle, opacity: zoomStyle.display === 'block' ? 1 : 0}} />
 
-                   {product.sale && (
-                     <span className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest z-10 rounded-sm shadow-sm">Sale</span>
-                   )}
+                   {/* Badges */}
+                   <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                     {product.sale && (
+                       <span className="bg-red-600 text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest rounded-sm shadow-sm">Sale</span>
+                     )}
+                     {isOutOfStock && (
+                       <span className="bg-gray-900 text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest rounded-sm shadow-sm">Sold Out</span>
+                     )}
+                   </div>
                    
                    <div className="absolute top-4 right-4 flex flex-col gap-3 z-30">
                       <button onClick={handleToggleWishlist} className="bg-white p-2.5 rounded-full shadow-sm hover:shadow-lg hover:bg-black hover:text-white transition-all duration-300 group/btn">
@@ -279,13 +352,13 @@ const ProductDetails = () => {
 
           {/* RIGHT: SCROLLABLE INFO */}
           <div className="flex flex-col gap-6">
-             
+              
              <div>
                <div className="flex items-center gap-2 mb-3">
                   <div className="flex text-yellow-500">
                       {[1,2,3,4,5].map(i => <Star key={i} size={14} fill={i <= (product.rating || 5) ? "currentColor" : "none"} />)}
                   </div>
-                  <span className="text-xs font-bold text-gray-500 underline cursor-pointer hover:text-black transition-colors">{product.reviewCount || 124} Reviews</span>
+                  <span className="text-xs font-bold text-gray-500 underline cursor-pointer hover:text-black transition-colors">{product.reviewCount || reviewsList.length || 0} Reviews</span>
                </div>
                <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold tracking-tight text-gray-900 mb-3 leading-tight">
                  {product.title || product.name}
@@ -293,10 +366,12 @@ const ProductDetails = () => {
                <p className="text-base md:text-lg text-gray-500 font-light leading-relaxed">{product.subtitle || product.description || "Zero Dilution Clinical Formulation"}</p>
              </div>
 
-             <div className="text-red-600 text-xs font-bold animate-pulse flex items-center gap-2 bg-red-50 w-fit px-3 py-1.5 rounded-sm">
-               <span className="w-1.5 h-1.5 rounded-full bg-red-600 inline-block"></span> 
-               Only a few units left at this price!
-             </div>
+             {!isOutOfStock && (
+               <div className="text-red-600 text-xs font-bold animate-pulse flex items-center gap-2 bg-red-50 w-fit px-3 py-1.5 rounded-sm">
+                 <span className="w-1.5 h-1.5 rounded-full bg-red-600 inline-block"></span> 
+                 Only a few units left at this price!
+               </div>
+             )}
 
              {/* Price & Offers */}
              <div className="border-y border-gray-100 py-6 my-2">
@@ -345,8 +420,8 @@ const ProductDetails = () => {
                   </p>
                 )}
 
-                {/* Frequent Bought Together */}
-                {upsellProduct && (
+                {/* Frequent Bought Together (Hide if OOS) */}
+                {upsellProduct && !isOutOfStock && (
                   <div className={`mt-8 border p-4 rounded-sm transition-all duration-300 cursor-pointer ${upsellSelected ? 'border-black bg-gray-50/50' : 'border-gray-200 bg-white hover:border-gray-300'}`} onClick={() => setUpsellSelected(!upsellSelected)}>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Frequently Bought Together</h4>
@@ -374,16 +449,23 @@ const ProductDetails = () => {
 
                 {/* Add to Cart Row */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-8">
-                  <div className="flex items-center border border-gray-300 rounded-sm w-full sm:w-36 justify-between px-4 h-14 bg-[#FBFBFB]">
-                      <button onClick={() => setQty(Math.max(1, qty-1))} className="text-gray-500 hover:text-black transition-colors p-1"><Minus size={16}/></button>
+                  <div className={`flex items-center border border-gray-300 rounded-sm w-full sm:w-36 justify-between px-4 h-14 bg-[#FBFBFB] ${isOutOfStock ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <button onClick={() => setQty(Math.max(1, qty-1))} disabled={isOutOfStock} className="text-gray-500 hover:text-black transition-colors p-1"><Minus size={16}/></button>
                       <span className="font-bold text-sm">{qty}</span>
-                      <button onClick={() => setQty(qty+1)} className="text-gray-500 hover:text-black transition-colors p-1"><Plus size={16}/></button>
+                      <button onClick={() => setQty(qty+1)} disabled={isOutOfStock} className="text-gray-500 hover:text-black transition-colors p-1"><Plus size={16}/></button>
                   </div>
+                  
+                  {/* ✅ OUT OF STOCK BUTTON LOGIC */}
                   <button 
                     onClick={handleAddToCart}
-                    className="flex-1 bg-black text-white h-14 font-bold uppercase tracking-[0.2em] hover:bg-[#C5A059] transition-all duration-300 shadow-lg flex justify-center items-center gap-3 text-xs md:text-sm rounded-sm"
+                    disabled={isOutOfStock}
+                    className={`flex-1 text-white h-14 font-bold uppercase tracking-[0.2em] transition-all duration-300 shadow-lg flex justify-center items-center gap-3 text-xs md:text-sm rounded-sm ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-[#C5A059]'}`}
                   >
-                      <ShoppingBag size={18} /> Add To Bag • ₹{finalTotal}
+                      {isOutOfStock ? (
+                        <>Out of Stock</>
+                      ) : (
+                        <><ShoppingBag size={18} /> Add To Bag • ₹{finalTotal}</>
+                      )}
                   </button>
                 </div>
              </div>
@@ -452,7 +534,7 @@ const ProductDetails = () => {
                     <div className="flex justify-center text-yellow-500 mb-4">
                         {[1,2,3,4,5].map(i => <Star key={i} fill="currentColor" size={20} />)}
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-8">Based on {product.reviewCount || 124} Reviews</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-8">Based on {product.reviewCount || reviewsList.length || 0} Reviews</p>
                     
                     <div className="flex flex-wrap gap-2 justify-center mb-8">
                        {[5,4,3,2,1].map(star => (
@@ -472,27 +554,40 @@ const ProductDetails = () => {
                  </div>
                </div>
                
-               {/* RIGHT: SCROLLABLE COMMENTS */}
+               {/* RIGHT: SCROLLABLE COMMENTS (Real Data) */}
                <div className="md:col-span-2 space-y-6">
-                  {[1, 2, 3, 4, 5, 6].map((r) => (
-                     <div key={r} className="border border-gray-100 p-6 md:p-8 rounded-sm hover:border-gray-200 transition-colors bg-white">
-                        <div className="flex justify-between items-start mb-4">
-                           <div className="flex text-yellow-500">
-                              {[1,2,3,4,5].map(i => <Star key={i} fill="currentColor" size={14} />)}
-                           </div>
-                           <span className="text-[9px] text-green-700 bg-green-50 px-2 py-1 font-bold uppercase tracking-widest rounded-sm flex items-center gap-1">
-                             <CheckCircle size={10} /> Verified
-                           </span>
-                        </div>
-                        <h4 className="font-bold text-base md:text-lg text-gray-900 mb-2">Visibly transformed my routine</h4>
-                        <p className="text-sm text-gray-600 leading-relaxed mb-5 font-light">
-                           "I was skeptical at first, but after 2 weeks I can see real improvement. The zero-dilution formula means you only need a few drops. The smell is a bit strong but purely natural, which I appreciate. Highly recommend!"
-                        </p>
-                        <div className="flex items-center gap-2 pt-4 border-t border-gray-50">
-                           <span className="text-[10px] font-bold uppercase tracking-widest text-gray-900">Sneha K.</span>
-                        </div>
-                     </div>
-                  ))}
+                  {reviewsList.length > 0 ? (
+                    reviewsList.map((review, idx) => (
+                       <div key={idx} className="border border-gray-100 p-6 md:p-8 rounded-sm hover:border-gray-200 transition-colors bg-white">
+                          <div className="flex justify-between items-start mb-4">
+                             <div className="flex text-yellow-500">
+                                {[1,2,3,4,5].map(i => <Star key={i} fill={i <= review.rating ? "currentColor" : "none"} size={14} />)}
+                             </div>
+                             <span className="text-[9px] text-green-700 bg-green-50 px-2 py-1 font-bold uppercase tracking-widest rounded-sm flex items-center gap-1">
+                               <CheckCircle size={10} /> Verified
+                             </span>
+                          </div>
+                          <h4 className="font-bold text-base md:text-lg text-gray-900 mb-2">{review.title}</h4>
+                          <p className="text-sm text-gray-600 leading-relaxed mb-5 font-light">
+                             "{review.comment}"
+                          </p>
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-900">{review.name || review.user?.name || "Customer"}</span>
+                             {review.createdAt && (
+                               <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+                                 {new Date(review.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                               </span>
+                             )}
+                          </div>
+                       </div>
+                    ))
+                  ) : (
+                    <div className="border border-dashed border-gray-200 p-12 text-center rounded-sm flex flex-col items-center justify-center h-full">
+                      <Star size={40} className="text-gray-200 mb-4" />
+                      <h4 className="font-bold text-lg text-gray-900 mb-2">No reviews yet</h4>
+                      <p className="text-sm text-gray-500 font-light max-w-sm mx-auto">Have you tried this clinical formulation? Be the first to share your experience with the community.</p>
+                    </div>
+                  )}
                </div>
             </div>
          </div>
@@ -519,7 +614,9 @@ const ProductDetails = () => {
                           />
                        </div>
                        <div className="p-4 md:p-5 text-center flex-1 flex flex-col">
-                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">{item.concern || "Care"}</p>
+                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">
+                            {Array.isArray(item.category) ? item.category[0] : (item.category || item.concern || "Care")}
+                          </p>
                           <h3 className="font-bold text-xs md:text-sm mb-3 line-clamp-2 group-hover:text-[#C5A059] transition-colors leading-snug">{item.name}</h3>
                           <div className="flex items-center justify-center gap-2 mt-auto">
                              <span className="font-black text-sm text-gray-900">₹{item.price}</span>
@@ -532,17 +629,19 @@ const ProductDetails = () => {
         </section>
       )}
 
-      {/* --- MOBILE STICKY BAR --- */}
+      {/* --- MOBILE STICKY BAR (Updated for Out of Stock) --- */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:hidden z-50 flex items-center gap-4 shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.1)] pb-safe">
          <div className="flex-1">
             <p className="text-[9px] text-gray-500 uppercase font-bold tracking-[0.2em] truncate mb-0.5">{product.name}</p>
             <p className="text-lg font-black leading-none text-gray-900">₹{finalTotal}</p>
          </div>
+         
          <button 
            onClick={handleAddToCart} 
-           className="bg-black text-white px-8 py-3.5 font-bold uppercase tracking-widest text-[10px] rounded-sm shadow-md active:scale-95 transition-transform flex items-center gap-2"
+           disabled={isOutOfStock}
+           className={`text-white px-8 py-3.5 font-bold uppercase tracking-widest text-[10px] rounded-sm shadow-md transition-transform flex items-center gap-2 ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-black active:scale-95'}`}
          >
-            <ShoppingBag size={14} /> Add
+            <ShoppingBag size={14} /> {isOutOfStock ? 'Sold Out' : 'Add'}
          </button>
       </div>
       

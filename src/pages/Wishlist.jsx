@@ -7,8 +7,13 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 
 const Wishlist = () => {
-  const { wishlistItems, toggleWishlist } = useWishlist();
-  const { addToCart } = useCart();
+  // Added safe fallbacks so the app never crashes if context is briefly unavailable
+  const wishlistContext = useWishlist() || {};
+  const wishlistItems = Array.isArray(wishlistContext.wishlistItems) ? wishlistContext.wishlistItems : [];
+  const toggleWishlist = wishlistContext.toggleWishlist || (() => {});
+  
+  const cartContext = useCart() || {};
+  const addToCart = cartContext.addToCart || (() => {});
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -34,8 +39,12 @@ const Wishlist = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {wishlistItems.map((product) => (
-              <div key={product.id} className="bg-white flex flex-col group rounded-sm border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            {wishlistItems.map((product, index) => {
+              // Safely extract the ID regardless of how MongoDB formats it
+              const uniqueId = product?.productId || product?._id || product?.id || index;
+
+              return (
+              <div key={uniqueId} className="bg-white flex flex-col group rounded-sm border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 
                 {/* Image Area */}
                 <div className="relative bg-[#F9F9F9] aspect-[4/5] overflow-hidden">
@@ -45,18 +54,25 @@ const Wishlist = () => {
                   >
                     <Trash2 size={16} />
                   </button>
-                  <Link to={`/product/${product.id}`}>
-                    <img src={product.image || product.images?.[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 mix-blend-multiply p-4" />
+                  <Link to={`/product/${uniqueId}`}>
+                    <img 
+                      src={product?.image || product?.images?.[0] || "https://via.placeholder.com/300"} 
+                      alt={product?.name || "Product"} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 mix-blend-multiply p-4" 
+                    />
                   </Link>
                 </div>
 
                 {/* Details Area */}
                 <div className="p-5 flex flex-col flex-1 text-center">
-                  <p className="text-[10px] text-[#C5A059] uppercase tracking-widest font-bold mb-1">{product.category || 'Care'}</p>
-                  <Link to={`/product/${product.id}`} className="hover:text-gray-600 transition-colors">
-                    <h4 className="font-bold text-sm leading-snug mb-3 line-clamp-2 min-h-[40px]">{product.name}</h4>
+                  <p className="text-[10px] text-[#C5A059] uppercase tracking-widest font-bold mb-1">
+                    {/* Fixed the mashed category text issue here too! */}
+                    {Array.isArray(product?.category) ? product.category.join(', ') : (product?.category || 'Care')}
+                  </p>
+                  <Link to={`/product/${uniqueId}`} className="hover:text-gray-600 transition-colors">
+                    <h4 className="font-bold text-sm leading-snug mb-3 line-clamp-2 min-h-[40px]">{product?.name || "Unnamed Product"}</h4>
                   </Link>
-                  <p className="font-bold text-lg mb-6 mt-auto">₹{product.price}</p>
+                  <p className="font-bold text-lg mb-6 mt-auto">₹{product?.price || 0}</p>
                   
                   <button 
                     onClick={() => addToCart(product, 1)}
@@ -67,7 +83,7 @@ const Wishlist = () => {
                 </div>
 
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

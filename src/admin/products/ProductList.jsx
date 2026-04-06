@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductModal from '../ProductModal'; 
-import API from '../../api/axiosInstance'; 
+// ✅ 1. Import the centralized service instead of raw API
+import productService from '../../api/productService'; 
 import { Star, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 const ProductList = () => {
@@ -14,8 +15,9 @@ const ProductList = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await API.get('/product');
-      const fetchedProducts = response.data.data || response.data.products || response.data || [];
+      // ✅ 2. Use the service method to fetch products
+      const data = await productService.getAllProducts();
+      const fetchedProducts = data.data || data.products || data || [];
       
       setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
       setError('');
@@ -32,13 +34,12 @@ const ProductList = () => {
   }, []);
 
   const handleDelete = async (product) => {
-    // ✅ FIX: Extract the correct ID for the URL
     const idForUrl = product.productId || product._id || product.id;
 
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       try {
-        await API.delete(`/product/${idForUrl}`);
-        // Filter out the deleted item from the state
+        // ✅ 3. Use the service method to delete
+        await productService.deleteProduct(idForUrl);
         setProducts(products.filter(p => (p.productId || p._id || p.id) !== idForUrl));
       } catch (err) {
         alert(err.response?.data?.message || "Failed to delete product.");
@@ -47,7 +48,6 @@ const ProductList = () => {
   };
 
   const toggleBestseller = async (product) => {
-    // ✅ FIX: Extract the correct ID for the URL
     const idForUrl = product.productId || product._id || product.id;
     if (!idForUrl) return; 
 
@@ -62,7 +62,8 @@ const ProductList = () => {
     try {
       const { _id, id, createdAt, updatedAt, __v, ...cleanProduct } = product;
 
-      await API.put(`/product/${idForUrl}`, {
+      // ✅ 4. Use the service method to update
+      await productService.updateProduct(idForUrl, {
         ...cleanProduct, 
         bestSeller: newStatus 
       });
@@ -128,7 +129,6 @@ const ProductList = () => {
             <tbody className="divide-y divide-gray-100">
               {products.map((product) => {
                 const inStock = product.countInStock > 0;
-                // Use productId for unique keys
                 const uniqueKeyId = product.productId || product._id || product.id;
 
                 return (
@@ -160,7 +160,11 @@ const ProductList = () => {
                       </div>
                     </td>
 
-                    <td className="p-4 text-sm text-gray-600">{product.category || 'Uncategorized'}</td>
+                    <td className="p-4 text-sm text-gray-600">
+                      {Array.isArray(product.category) 
+                        ? product.category.join(', ') 
+                        : (product.category || 'Uncategorized')}
+                    </td>
                     
                     <td className="p-4 text-sm font-bold text-gray-900">
                       ₹{parseFloat(product.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -185,7 +189,6 @@ const ProductList = () => {
                       >
                         Edit
                       </button>
-                      {/* ✅ FIX: We pass the entire product object here now */}
                       <button 
                         onClick={() => handleDelete(product)} 
                         className="text-sm font-bold text-red-600 hover:text-red-900 transition-colors"

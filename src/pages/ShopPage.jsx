@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { X, Filter, ChevronDown, Check, Heart, Eye, ArrowRight, ShoppingBag, Sliders, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import API from '../api/axiosInstance'; // 🆕 Centralized API Client
+
+// ✅ 1. Import the new centralized service instead of raw API
+import productService from '../api/productService'; 
 
 const ShopPage = () => {
   const location = useLocation();
@@ -29,15 +31,16 @@ const ShopPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // --- 🆕 FETCH PRODUCTS VIA AXIOS INSTANCE ---
+  // --- ✅ 2. FETCH PRODUCTS VIA CENTRALIZED SERVICE ---
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        const response = await API.get('/product?limit=1000');
+        // Use the service function and pass the query parameters
+        const data = await productService.getAllProducts('?limit=1000');
         
         // Extract array from response safely
-        const fetchedProducts = response.data.data || response.data.products || response.data || [];
+        const fetchedProducts = data.data || data.products || data || [];
         
         // Filter out Draft products so customers only see active ones
         const activeProducts = Array.isArray(fetchedProducts) 
@@ -85,7 +88,13 @@ const ShopPage = () => {
       const singularQuery = cleanQuery.endsWith('s') ? cleanQuery.slice(0, -1) : cleanQuery; 
 
       result = result.filter(p => {
-        const combinedText = String(`${p?.name} ${p?.category} ${p?.concern} ${p?.description}`).toLowerCase();
+        // 🔥 FIX 1: Safely extract ingredient names from the arrays
+        const catText = Array.isArray(p?.category) ? p.category.join(' ') : (p?.category || '');
+        const activesText = Array.isArray(p?.keyActives) ? p.keyActives.map(a => a.name).join(' ') : '';
+        const ingredientsText = Array.isArray(p?.fullIngredients) ? p.fullIngredients.map(i => i.name).join(' ') : '';
+
+        // 🔥 FIX 2: Add activesText and ingredientsText into the search checking string!
+        const combinedText = String(`${p?.name} ${catText} ${p?.concern} ${p?.description} ${activesText} ${ingredientsText}`).toLowerCase();
         const cleanCombined = combinedText.replace(/[^a-z0-9]/g, '');
         
         return combinedText.includes(query) || 
@@ -100,7 +109,12 @@ const ShopPage = () => {
       const singularCat = cleanCat.endsWith('s') ? cleanCat.slice(0, -1) : cleanCat;
 
       result = result.filter(p => {
-        const combinedText = String(`${p?.category} ${p?.concern} ${p?.name}`).toLowerCase();
+        // 🔥 FIX 3: Do the same extraction for sidebar category clicks
+        const catText = Array.isArray(p?.category) ? p.category.join(' ') : (p?.category || '');
+        const activesText = Array.isArray(p?.keyActives) ? p.keyActives.map(a => a.name).join(' ') : '';
+        const ingredientsText = Array.isArray(p?.fullIngredients) ? p.fullIngredients.map(i => i.name).join(' ') : '';
+
+        const combinedText = String(`${catText} ${p?.concern} ${p?.name} ${activesText} ${ingredientsText}`).toLowerCase();
         const cleanCombined = combinedText.replace(/[^a-z0-9]/g, '');
 
         return combinedText.includes(cat) || 
@@ -304,7 +318,7 @@ const ShopPage = () => {
                     
                     <div className="relative mb-5 bg-[#F4F4F4] aspect-[4/5] overflow-hidden">
                       
-                      {/* 🆕 Bestseller Badge */}
+                      {/* Bestseller Badge */}
                       {product.isBestseller && (
                         <div className="absolute top-3 left-3 z-30 bg-yellow-400/90 backdrop-blur-sm text-yellow-900 text-[8px] md:text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-md flex items-center gap-1.5 rounded-sm">
                           <Star size={10} className="fill-yellow-900" /> Bestseller
@@ -335,7 +349,9 @@ const ShopPage = () => {
                     </div>
 
                     <div className="text-center flex flex-col flex-1 px-4 pb-6">
-                        <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">{product.category || product.concern || "ALDAY"}</p>
+                        <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">
+                          {Array.isArray(product.category) ? product.category.join(', ') : (product.category || product.concern || "ALDAY")}
+                        </p>
                         
                         <Link to={`/product/${productId}`} className="block group-hover/card:text-[#C5A059] transition-colors mb-3">
                             <h6 className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 min-h-[40px] tracking-tight">{product.name}</h6>
@@ -405,7 +421,9 @@ const ShopPage = () => {
               </div>
               
               <div className="w-full md:w-1/2 p-8 md:p-14 overflow-y-auto flex flex-col justify-center">
-                 <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-4 block">{quickViewProduct.category || "Hair Care"}</span>
+                 <span className="text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-4 block">
+                   {Array.isArray(quickViewProduct.category) ? quickViewProduct.category.join(', ') : (quickViewProduct.category || "Hair Care")}
+                 </span>
                  <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 tracking-tight">{quickViewProduct.name}</h2>
                  <p className="text-gray-500 text-sm md:text-base mb-8 leading-relaxed font-light">{quickViewProduct.description || "Experience the potency of clinical nutrition formulations for your daily care routine."}</p>
                  

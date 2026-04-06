@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import API from '../api/axiosInstance'; // <-- Import your Axios instance
+import authService from '../api/authService'; 
 
 const AuthContext = createContext();
 
@@ -28,8 +28,7 @@ export const AuthProvider = ({ children }) => {
         password: userData.password
       };
 
-      // Axios automatically handles JSON and headers
-      const { data } = await API.post('/auth/register', formattedData);
+      const data = await authService.register(formattedData);
 
       // Auto-login after registration
       if (data.token) {
@@ -49,7 +48,7 @@ export const AuthProvider = ({ children }) => {
   // 2. Login Function
   const login = async (email, password) => {
     try {
-      const { data } = await API.post('/auth/login', { email, password });
+      const data = await authService.login({ email, password });
 
       // Save user details and authentication token
       setUser(data.user);
@@ -64,15 +63,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 3. Logout Function
+  // 3. Logout Function (🔥 100% ENTERPRISE STRICT)
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('alday_active_user');
+    // 1. Clear Authentication Data
     localStorage.removeItem('alday_auth_token');
+    localStorage.removeItem('alday_active_user'); 
+    
+    // 2. Clear Personal Shopping Data (Prevents next user from seeing previous cart/wishlist)
+    localStorage.removeItem('alday_cart');
+    localStorage.removeItem('alday_wishlist');
+
+    // 3. Clear the React user state
+    setUser(null);
+
+    // 4. Force a hard refresh to wipe React's memory completely
+    window.location.href = '/login'; 
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

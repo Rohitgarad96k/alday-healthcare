@@ -8,7 +8,6 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  // Check if user is already logged in when the app loads
   useEffect(() => {
     const loggedInUser = localStorage.getItem('alday_active_user');
     const token = localStorage.getItem('alday_auth_token');
@@ -18,7 +17,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
- // 1. Register Function
   const register = async (userData) => {
     try {
       const formattedData = {
@@ -30,11 +28,13 @@ export const AuthProvider = ({ children }) => {
 
       const data = await authService.register(formattedData);
 
-      // Auto-login after registration
       if (data.token) {
          setUser(data.user);
          localStorage.setItem('alday_active_user', JSON.stringify(data.user));
          localStorage.setItem('alday_auth_token', data.token);
+         
+         // 🔥 TELL THE APP A LOGIN HAPPENED!
+         window.dispatchEvent(new Event('auth-change'));
       }
       return { success: true, message: 'Registration successful!' };
       
@@ -45,15 +45,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 2. Login Function
   const login = async (email, password) => {
     try {
       const data = await authService.login({ email, password });
 
-      // Save user details and authentication token
       setUser(data.user);
       localStorage.setItem('alday_active_user', JSON.stringify(data.user));
       localStorage.setItem('alday_auth_token', data.token); 
+      
+      // 🔥 TELL THE APP A LOGIN HAPPENED!
+      window.dispatchEvent(new Event('auth-change'));
+
       return { success: true, message: 'Login successful!' };
       
     } catch (error) {
@@ -63,20 +65,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 3. Logout Function (🔥 100% ENTERPRISE STRICT)
   const logout = () => {
-    // 1. Clear Authentication Data
     localStorage.removeItem('alday_auth_token');
     localStorage.removeItem('alday_active_user'); 
-    
-    // 2. Clear Personal Shopping Data (Prevents next user from seeing previous cart/wishlist)
     localStorage.removeItem('alday_cart');
     localStorage.removeItem('alday_wishlist');
-
-    // 3. Clear the React user state
     setUser(null);
-
-    // 4. Force a hard refresh to wipe React's memory completely
     window.location.href = '/login'; 
   };
 

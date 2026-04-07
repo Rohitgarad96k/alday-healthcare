@@ -11,10 +11,9 @@ const AdminDashboard = () => {
     activeOrders: 0,
     totalProducts: 0,
     customers: 0,
-    recentOrders: [], // Added to hold the latest orders
+    recentOrders: [], 
   });
 
-  // Dynamic greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -25,29 +24,40 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. FETCH ORDERS, CALCULATE REVENUE & GET RECENT
+      // 1. FETCH ORDERS
       let revenue = 0;
       let active = 0;
       let latest = [];
+      
       try {
-        const ordersRes = await API.get('/admin/order');
-        const ordersArray = Array.isArray(ordersRes.data)
-          ? ordersRes.data
-          : (Array.isArray(ordersRes.data?.data) ? ordersRes.data.data : []);
+        const token = localStorage.getItem('alday_auth_token') || localStorage.getItem('admin_token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        
+        const ordersRes = await API.get('/admin/order', config); // Make sure the endpoint matches your backend! (Usually /admin/order )
+        
+        // 🔥 THE FIX: Properly extract the orders array depending on the backend response
+        let ordersArray = [];
+        if (Array.isArray(ordersRes.data)) {
+            ordersArray = ordersRes.data;
+        } else if (ordersRes.data && Array.isArray(ordersRes.data.orders)) {
+            ordersArray = ordersRes.data.orders; // <- This is where your backend sends the data!
+        } else if (ordersRes.data && Array.isArray(ordersRes.data.data)) {
+            ordersArray = ordersRes.data.data;
+        }
 
         // Calculate Revenue
         revenue = ordersArray.reduce((acc, order) => {
-          return acc + (order.totalPrice || order.price || order.amount || 0);
+          return acc + (order.totalAmount || order.totalPrice || order.price || order.amount || 0);
         }, 0);
 
         // Count Active Orders
         active = ordersArray.filter(order =>
-          order.status === 'Processing' || order.status === 'Confirmed' || order.status === 'Pending'
+          ['PROCESSING', 'CONFIRMED', 'PENDING'].includes(order.status?.toUpperCase())
         ).length;
 
-        // Sort orders by date (newest first) and grab the top 5
+        // Sort orders by date (newest first) and grab the top 10
         const sortedOrders = [...ordersArray].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        latest = sortedOrders.slice(0, 5);
+        latest = sortedOrders.slice(0, 10);
 
       } catch (err) {
         console.error("Failed to fetch orders:", err);
@@ -57,9 +67,11 @@ const AdminDashboard = () => {
       let usersCount = 0;
       try {
         const usersRes = await API.get('/auth/users');
-        const usersArray = Array.isArray(usersRes.data)
-          ? usersRes.data
-          : (Array.isArray(usersRes.data?.data) ? usersRes.data.data : []);
+        let usersArray = [];
+        if (Array.isArray(usersRes.data)) usersArray = usersRes.data;
+        else if (usersRes.data && Array.isArray(usersRes.data.data)) usersArray = usersRes.data.data;
+        else if (usersRes.data && Array.isArray(usersRes.data.users)) usersArray = usersRes.data.users;
+        
         usersCount = usersArray.length;
       } catch (error) {
         console.error("Failed to fetch users.", error);
@@ -69,9 +81,11 @@ const AdminDashboard = () => {
       let productsCount = 0;
       try {
         const productsRes = await API.get('/product');
-        const productsArray = Array.isArray(productsRes.data)
-          ? productsRes.data
-          : (Array.isArray(productsRes.data?.data) ? productsRes.data.data : []);
+        let productsArray = [];
+        if (Array.isArray(productsRes.data)) productsArray = productsRes.data;
+        else if (productsRes.data && Array.isArray(productsRes.data.data)) productsArray = productsRes.data.data;
+        else if (productsRes.data && Array.isArray(productsRes.data.products)) productsArray = productsRes.data.products;
+        
         productsCount = productsArray.length;
       } catch (error) {
         console.error("Failed to fetch products:", error);
@@ -98,7 +112,6 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // Custom Skeleton Loader Component for the numbers
   const Skeleton = () => (
     <div className="h-10 w-24 bg-gray-200/50 rounded animate-pulse my-1"></div>
   );
@@ -165,9 +178,9 @@ const AdminDashboard = () => {
             {loading ? <Skeleton /> : (
               <p className="text-4xl font-black text-gray-900 mb-1">{dashboardData.activeOrders}</p>
             )}
-            <p className="text-gray-500 text-sm mb-4">Processing & Delivered</p>
+            <p className="text-gray-500 text-sm mb-4">Processing & Confirmed</p>
             
-            <Link to="/admin/orders" className="flex items-center gap-1 text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors group/link w-fit">
+            <Link to="/admin/order" className="flex items-center gap-1 text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors group/link w-fit">
               View Orders <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -195,7 +208,7 @@ const AdminDashboard = () => {
           <div className="absolute bottom-0 left-0 w-full h-1 bg-emerald-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
         </div>
 
-        {/* Customers Card (Link Removed) */}
+        {/* Customers Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md hover:border-purple-100 transition-all duration-300 relative overflow-hidden">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Customers</h3>
@@ -228,7 +241,7 @@ const AdminDashboard = () => {
             <h2 className="text-lg font-bold text-gray-900">Latest Orders</h2>
           </div>
           <Link 
-            to="/admin/orders" 
+            to="/admin/order" 
             className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 group bg-blue-50 px-4 py-2 rounded-lg transition-colors"
           >
             View All <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -254,22 +267,27 @@ const AdminDashboard = () => {
               ) : dashboardData.recentOrders.length > 0 ? (
                 dashboardData.recentOrders.map((order) => {
                   
-                  // Safe extraction for customer name based on common schemas
-                  const customerName = order.user?.fullName || order.shippingAddress?.fullName || 'Guest User';
+                  // Safe extraction for customer name
+                  const customerName = order.user?.fullName || order.user?.name || order.shippingAddress?.fullName || 'Guest User';
                   
                   // Status Badge Colors
                   const statusColors = {
-                    'Delivered': 'bg-emerald-50 text-emerald-600 border-emerald-200',
-                    'Processing': 'bg-blue-50 text-blue-600 border-blue-200',
-                    'Pending': 'bg-yellow-50 text-yellow-600 border-yellow-200',
-                    'Cancelled': 'bg-red-50 text-red-600 border-red-200',
+                    'DELIVERED': 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                    'PROCESSING': 'bg-indigo-50 text-indigo-600 border-indigo-200',
+                    'CONFIRMED': 'bg-cyan-50 text-cyan-600 border-cyan-200',
+                    'SHIPPED': 'bg-blue-50 text-blue-600 border-blue-200',
+                    'PENDING': 'bg-amber-50 text-amber-600 border-amber-200',
+                    'CANCELLED': 'bg-red-50 text-red-600 border-red-200',
                   };
-                  const badgeStyle = statusColors[order.status] || 'bg-gray-50 text-gray-600 border-gray-200';
+                  const statusKey = order.status ? order.status.toUpperCase() : 'PENDING';
+                  const badgeStyle = statusColors[statusKey] || 'bg-gray-50 text-gray-600 border-gray-200';
 
                   return (
                     <tr key={order._id} className="hover:bg-gray-50/80 transition-colors group">
                       <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                        #{order._id.substring(0, 8).toUpperCase()}
+                        <Link to={`/admin/order/${order._id}`} className="hover:text-blue-600 transition-colors">
+                           #{order.orderNumber || order._id.substring(0, 8).toUpperCase()}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -279,11 +297,11 @@ const AdminDashboard = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${badgeStyle}`}>
-                          {order.status || 'Pending'}
+                          {statusKey}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-black text-gray-900 text-right">
-                        ₹{(order.totalPrice || order.price || order.amount || 0).toLocaleString('en-IN')}
+                        ₹{(order.totalAmount || order.totalPrice || order.price || order.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   );

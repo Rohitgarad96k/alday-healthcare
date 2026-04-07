@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductModal from '../ProductModal'; 
-// ✅ 1. Import the centralized service instead of raw API
 import productService from '../../api/productService'; 
-import { Star, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Star, Image as ImageIcon, AlertCircle, Search, Filter, ChevronDown, ArrowUpDown } from 'lucide-react';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -12,10 +11,14 @@ const ProductList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
 
+  // State for Filtering, Searching, and Sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, ACTIVE, OUT_OF_STOCK, BESTSELLER
+  const [sortOption, setSortOption] = useState('NEWEST'); // NEWEST, OLDEST, PRICE_HIGH, PRICE_LOW, NAME_A_Z, NAME_Z_A
+
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      // ✅ 2. Use the service method to fetch products
       const data = await productService.getAllProducts();
       const fetchedProducts = data.data || data.products || data || [];
       
@@ -38,7 +41,6 @@ const ProductList = () => {
 
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       try {
-        // ✅ 3. Use the service method to delete
         await productService.deleteProduct(idForUrl);
         setProducts(products.filter(p => (p.productId || p._id || p.id) !== idForUrl));
       } catch (err) {
@@ -62,7 +64,6 @@ const ProductList = () => {
     try {
       const { _id, id, createdAt, updatedAt, __v, ...cleanProduct } = product;
 
-      // ✅ 4. Use the service method to update
       await productService.updateProduct(idForUrl, {
         ...cleanProduct, 
         bestSeller: newStatus 
@@ -79,19 +80,143 @@ const ProductList = () => {
     setIsModalOpen(true);
   };
 
+  // 🔥 FILTER & SORT LOGIC
+  const filteredAndSortedProducts = products
+    .filter((product) => {
+      // 1. Status Filter
+      let matchesStatus = true;
+      const inStock = product.countInStock > 0;
+      
+      if (statusFilter === 'ACTIVE') matchesStatus = inStock;
+      if (statusFilter === 'OUT_OF_STOCK') matchesStatus = !inStock;
+      if (statusFilter === 'BESTSELLER') matchesStatus = !!product.bestSeller;
+
+      // 2. Search Filter (Checks Name and Category)
+      const searchString = searchTerm.toLowerCase();
+      const productName = (product.name || '').toLowerCase();
+      const productCategory = Array.isArray(product.category) 
+        ? product.category.join(' ').toLowerCase() 
+        : (product.category || '').toLowerCase();
+      
+      const matchesSearch = searchString === '' || productName.includes(searchString) || productCategory.includes(searchString);
+
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      // 🔥 3. Sorting Logic
+      if (sortOption === 'NEWEST') {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+      if (sortOption === 'OLDEST') {
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      }
+      if (sortOption === 'PRICE_HIGH') {
+        return (b.price || 0) - (a.price || 0);
+      }
+      if (sortOption === 'PRICE_LOW') {
+        return (a.price || 0) - (b.price || 0);
+      }
+      // 🔥 NEW: Alphabetical Sorting
+      if (sortOption === 'NAME_A_Z') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      if (sortOption === 'NAME_Z_A') {
+        return (b.name || '').localeCompare(a.name || '');
+      }
+      return 0;
+    });
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('ALL');
+    setSortOption('NEWEST');
+  };
+
+  const statusOptions = [
+    { value: 'ALL', label: 'ALL STATUS' },
+    { value: 'ACTIVE', label: 'IN STOCK (ACTIVE)' },
+    { value: 'OUT_OF_STOCK', label: 'OUT OF STOCK' },
+    { value: 'BESTSELLER', label: 'BESTSELLERS ONLY' }
+  ];
+
+  const sortOptions = [
+    { value: 'NEWEST', label: 'DATE: NEWEST FIRST' },
+    { value: 'OLDEST', label: 'DATE: OLDEST FIRST' },
+    { value: 'PRICE_HIGH', label: 'PRICE: HIGH TO LOW' },
+    { value: 'PRICE_LOW', label: 'PRICE: LOW TO HIGH' },
+    // 🔥 NEW: Alphabetical Sorting Options Added
+    { value: 'NAME_A_Z', label: 'NAME: A TO Z' },
+    { value: 'NAME_Z_A', label: 'NAME: Z TO A' }
+  ];
+
   return (
     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products Database</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your inventory and highlight bestsellers.</p>
         </div>
         <button 
           onClick={() => handleOpenModal()} 
-          className="bg-[#12221A] text-white px-5 py-2.5 rounded-lg hover:bg-black transition shadow-md font-bold text-sm tracking-wide flex items-center gap-2"
+          className="bg-[#12221A] text-white px-5 py-2.5 rounded-lg hover:bg-black transition shadow-md font-bold text-sm tracking-wide flex items-center gap-2 flex-shrink-0"
         >
           + Add New Product
         </button>
+      </div>
+
+      {/* FILTERS & SORTING BAR */}
+      <div className="flex flex-col xl:flex-row gap-4 items-center mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100 w-full">
+        
+        {/* Search Bar */}
+        <div className="relative w-full xl:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search by Product Name or Category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all bg-white"
+          />
+        </div>
+
+        {/* Status Dropdown Filter */}
+        <div className="relative w-full xl:w-52 flex-shrink-0">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full pl-10 pr-8 py-2.5 text-xs font-bold uppercase tracking-widest border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all bg-white appearance-none cursor-pointer text-gray-700"
+          >
+            {statusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <ChevronDown size={14} />
+          </div>
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="relative w-full xl:w-56 flex-shrink-0">
+          <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="w-full pl-10 pr-8 py-2.5 text-xs font-bold uppercase tracking-widest border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all bg-white appearance-none cursor-pointer text-gray-700"
+          >
+            {sortOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <ChevronDown size={14} />
+          </div>
+        </div>
+
       </div>
 
       {error && (
@@ -112,8 +237,17 @@ const ProductList = () => {
           <p className="font-medium text-gray-900 mb-1">No products found</p>
           <p className="text-sm">Click "Add New Product" to populate your store.</p>
         </div>
+      ) : filteredAndSortedProducts.length === 0 ? (
+        <div className="py-16 text-center text-gray-500 bg-gray-50/50 rounded-xl border border-gray-100">
+          <Search size={40} className="mx-auto mb-4 text-gray-300" />
+          <p className="font-medium text-gray-900 mb-1">No matching products</p>
+          <p className="text-sm">Try adjusting your search or filter criteria.</p>
+          <button onClick={clearAllFilters} className="mt-4 text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-800 underline">
+            Clear All Filters
+          </button>
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-100">
+        <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
           <table className="w-full text-left whitespace-nowrap">
             <thead className="bg-gray-50/80 border-b border-gray-100">
               <tr>
@@ -126,8 +260,8 @@ const ProductList = () => {
                 <th className="p-4 font-bold text-xs uppercase tracking-wider text-gray-500 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.map((product) => {
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {filteredAndSortedProducts.map((product) => {
                 const inStock = product.countInStock > 0;
                 const uniqueKeyId = product.productId || product._id || product.id;
 
@@ -149,9 +283,9 @@ const ProductList = () => {
 
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-white border border-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        <div className="w-10 h-10 rounded bg-white border border-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center p-1">
                           {product.image ? (
-                            <img src={product.image} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
+                            <img src={product.image} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" />
                           ) : (
                             <ImageIcon size={20} className="text-gray-300" />
                           )}

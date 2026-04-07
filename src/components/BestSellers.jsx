@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Eye, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-// ✅ 1. Import the centralized service instead of raw API
 import productService from '../api/productService'; 
 import { useCart } from '../context/CartContext';
+
+// 🔥 SAFETY ARMOR
+const safeText = (value, fallback = "") => {
+  if (!value) return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (Array.isArray(value)) {
+    if (typeof value[0] === 'object') return fallback;
+    return value.join(', '); 
+  }
+  return fallback;
+};
 
 const BestSellers = () => {
   const navigate = useNavigate();
@@ -16,7 +26,6 @@ const BestSellers = () => {
     const fetchBestSellers = async () => {
       try {
         setIsLoading(true);
-        // ✅ 2. Use the service method to fetch products
         const data = await productService.getAllProducts();
         const allProducts = data.data || data.products || [];
         
@@ -60,7 +69,6 @@ const BestSellers = () => {
     <section className="py-20 md:py-24 bg-white border-t border-gray-100 select-none">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
         
-        {/* HEADER */}
         <div className="flex flex-col items-center text-center mb-12 md:mb-16">
           <span className="text-[10px] md:text-xs font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-3 block">
             Most Loved
@@ -71,18 +79,17 @@ const BestSellers = () => {
           <div className="w-16 h-[2px] bg-[#C5A059] mt-6"></div>
         </div>
 
-        {/* GRID */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
           {bestSellers.map((product) => {
             const uniqueId = product.productId || product._id;
-            const displayCategory = Array.isArray(product.category) ? product.category[0] : (product.category || "ALDAY");
+            
+            // 🔥 SECURED CATEGORY DISPLAY
+            const displayCategory = safeText(product.category, "ALDAY");
 
             return (
               <div key={uniqueId} className="w-full bg-white flex flex-col group/card h-full rounded-sm border border-transparent hover:border-gray-100 hover:shadow-xl transition-all duration-500">
                 
                 <Link to={`/product/${uniqueId}`} className="relative w-full aspect-[4/5] bg-[#F9F9F9] overflow-hidden block rounded-t-sm flex-shrink-0">
-                  
-                  {/* Smart Stacking Badges for Sale & Bestseller */}
                   <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
                     {product.sale && (
                       <span className="bg-red-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 shadow-sm w-fit">
@@ -98,7 +105,7 @@ const BestSellers = () => {
 
                   <img
                     src={product.image}
-                    alt={product.name}
+                    alt={safeText(product.name, "Product")}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-105 pointer-events-none mix-blend-multiply"
@@ -126,7 +133,7 @@ const BestSellers = () => {
                   </p>
                   <Link to={`/product/${uniqueId}`}>
                     <h3 className="text-sm font-bold text-gray-900 leading-snug mb-3 hover:text-[#C5A059] transition-colors line-clamp-1">
-                      {product.name}
+                      {safeText(product.name, "Clinical Formulation")}
                     </h3>
                   </Link>
                   <div className="flex items-center gap-2 mb-4 md:mb-5 mt-auto">

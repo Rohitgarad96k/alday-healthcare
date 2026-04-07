@@ -25,8 +25,10 @@ import AdminDashboard from './admin/AdminDashboard';
 import ProductList from './admin/products/ProductList';
 import AdminLogin from './admin/AdminLogin';
 import OrderList from './admin/orders/OrderList';
+import OrderDetails from './admin/orders/OrderDetails'; // 🔥 ADDED: Imported the new Order Details page
 import BestsellerList from './admin/bestsellers/BestsellerList'; 
 import PoliciesPage from './pages/policies/PoliciesPage';
+import Invoice from './pages/Invoice';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
 const DermaAnalyser = lazy(() => import('./pages/DermaAnalyser'));
@@ -113,6 +115,8 @@ function App() {
                 <Route path="/view-all" element={<ShopPage />} />
                 <Route path="/product/:id" element={<ProductDetails />} />
 
+                <Route path="/invoice" element={<ProtectedUserRoute><Invoice /></ProtectedUserRoute>} />
+
                 <Route path="/derma-analyser" element={<DermaAnalyser />} />
                 <Route path="/founders-corner" element={<FoundersCorner />} />
                 <Route path="/our-story" element={<OurStory />} />
@@ -123,6 +127,7 @@ function App() {
                 <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="/help-support" element={<HelpSupport />} />
                 <Route path="/policies" element={<PoliciesPage />} />
+
 
                 {/* PROTECTED USER ROUTES */}
                 <Route path="/account" element={
@@ -154,6 +159,7 @@ function App() {
                 <Route path="products" element={<ProductList />} />
                 <Route path="bestsellers" element={<BestsellerList />} />
                 <Route path="orders" element={<OrderList />} />
+                <Route path="order/:id" element={<OrderDetails />} /> {/* 🔥 ADDED: Registered the new Order Details route */}
               </Route>
 
             </Routes>

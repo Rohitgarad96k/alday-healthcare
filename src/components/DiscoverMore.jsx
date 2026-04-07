@@ -4,10 +4,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext'; 
 import { useWishlist } from '../context/WishlistContext';
 
+// 🔥 SAFETY ARMOR: Protects React from crashing if the DB sends weird objects
+const safeText = (value, fallback = "") => {
+  if (!value) return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (Array.isArray(value)) {
+    if (typeof value[0] === 'object') return fallback;
+    return value.join(', '); 
+  }
+  return fallback;
+};
+
 const DiscoverMore = () => {
   const navigate = useNavigate();
   
-  // Contexts with safety fallbacks (Prevents crashing)
   const cartContext = useCart() || {};
   const wishlistContext = useWishlist() || {};
   const { addToCart, setIsCartOpen } = cartContext;
@@ -19,7 +29,6 @@ const DiscoverMore = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addingState, setAddingState] = useState({}); 
 
-  // --- FETCH PRODUCTS FROM BACKEND (Copied from ShopPage logic) ---
   useEffect(() => {
     const fetchProducts = async () => {
       setIsFetching(true);
@@ -29,13 +38,11 @@ const DiscoverMore = () => {
         
         const data = await response.json();
         
-        // Safely extract the array based on your backend structure
         const fetchedProducts = data.data || data.products || [];
         const productsArray = Array.isArray(fetchedProducts) ? fetchedProducts : [];
         
         setAllProducts(productsArray);
         
-        // Shuffle and set initial 4 products
         if (productsArray.length > 0) {
           const shuffled = [...productsArray].sort(() => 0.5 - Math.random());
           setRandomProducts(shuffled.slice(0, 4));
@@ -51,7 +58,6 @@ const DiscoverMore = () => {
     fetchProducts();
   }, []);
 
-  // --- PREMIUM SHUFFLE FUNCTION ---
   const shuffleProducts = () => {
     if (allProducts.length === 0) return;
     
@@ -60,10 +66,9 @@ const DiscoverMore = () => {
       const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
       setRandomProducts(shuffled.slice(0, 4));
       setIsRefreshing(false);
-    }, 400); // Delay for smooth CSS fade
+    }, 400); 
   };
 
-  // --- ADD TO CART HANDLER ---
   const handleAddToCart = (e, product) => {
     e.preventDefault(); 
     e.stopPropagation();
@@ -78,21 +83,18 @@ const DiscoverMore = () => {
     }, 600); 
   };
 
-  // --- WISHLIST HANDLER ---
   const handleWishlistClick = (e, product) => {
     e.preventDefault();
     e.stopPropagation();
     if (toggleWishlist) toggleWishlist(product);
   };
 
-  // Hide component entirely if no products are available and we are done fetching
   if (!isFetching && randomProducts.length === 0) return null;
 
   return (
     <section className="py-16 md:py-24 bg-[#FBFBFB] border-t border-gray-100 select-none overflow-hidden font-sans">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
         
-        {/* --- PREMIUM HEADER --- */}
         <div className="flex flex-col items-center text-center mb-10 md:mb-16 relative">
           <span className="text-[10px] md:text-xs font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-3 block">
             Curated For You
@@ -112,7 +114,6 @@ const DiscoverMore = () => {
           </button>
         </div>
 
-        {/* --- LOADING STATE --- */}
         {isFetching ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-50">
             <Loader2 size={40} className="animate-spin text-[#C5A059] mb-4" />
@@ -120,7 +121,6 @@ const DiscoverMore = () => {
           </div>
         ) : (
           <>
-            {/* --- RESPONSIVE GRID --- */}
             <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 transition-all duration-500 ease-in-out ${isRefreshing ? 'opacity-0 scale-[0.98]' : 'opacity-100 scale-100'}`}>
               
               {randomProducts.map((product) => {
@@ -132,10 +132,8 @@ const DiscoverMore = () => {
                     className="flex flex-col group/card h-full bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-sm transition-all duration-500 border border-transparent hover:border-gray-100 overflow-hidden"
                   >
                     
-                    {/* Image Area */}
                     <div className="relative mb-5 bg-[#F4F4F4] aspect-[4/5] overflow-hidden">
                       
-                      {/* Floating Actions */}
                       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 translate-x-10 opacity-0 group-hover/card:translate-x-0 group-hover/card:opacity-100 transition-all duration-400 ease-out">
                          <button onClick={(e) => handleWishlistClick(e, product)} className="bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-[#12221A] hover:text-white transition-colors group/btn">
                             <Heart size={16} fill={isInWishlist?.(productId) ? "#C5A059" : "none"} className={isInWishlist?.(productId) ? "text-[#C5A059] group-hover/btn:text-[#C5A059]" : ""} />
@@ -148,35 +146,36 @@ const DiscoverMore = () => {
                       <Link to={`/product/${productId}`} className="block h-full">
                         <img 
                           src={product.image || product.imageUrl || "https://via.placeholder.com/300"} 
-                          alt={product.name} 
+                          alt={safeText(product.name)} 
                           className="w-full h-full object-cover transition-transform duration-[2s] group-hover/card:scale-105 mix-blend-multiply p-4" 
                           loading="lazy"
                         />
                       </Link>
 
-                      {/* Sale Badge */}
                       {product.mrp && product.price < product.mrp && (
                         <span className="absolute top-4 left-4 bg-[#12221A] text-[#C5A059] text-[8px] md:text-[9px] font-black px-3 py-1.5 uppercase tracking-[0.2em] shadow-lg">Sale</span>
                       )}
                     </div>
 
-                    {/* Details Area */}
                     <div className="text-center flex flex-col flex-1 px-4 pb-6">
+                        {/* 🔥 SAFETY FIX FOR CATEGORY */}
                         <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">
-                          {product.category || product.concern || "ALDAY"}
+                          {safeText(product.category || product.concern, "ALDAY")}
                         </p>
                         
                         <Link to={`/product/${productId}`} className="block group-hover/card:text-[#C5A059] transition-colors mb-3">
-                            <h6 className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 min-h-[40px] tracking-tight">{product.name}</h6>
+                            <h6 className="text-sm md:text-base font-bold text-gray-900 leading-snug line-clamp-2 min-h-[40px] tracking-tight">
+                              {safeText(product.name, "Clinical Formulation")}
+                            </h6>
                         </Link>
                         
-                        {/* Stars */}
                         <div className="flex items-center justify-center gap-0.5 mb-3">
                            {[...Array(5)].map((_, i) => (
                              <Star key={i} size={10} className="text-[#C5A059] fill-[#C5A059]" />
                            ))}
+                           {/* 🔥 THE CRITICAL FIX: Safe length check for reviews */}
                            <span className="text-[9px] text-gray-400 ml-1.5 font-bold">
-                             ({product.reviews || Math.floor(Math.random() * 200) + 20})
+                             ({Array.isArray(product.reviews) ? product.reviews.length : (product.reviewCount || Math.floor(Math.random() * 200) + 20)})
                            </span>
                         </div>
 
@@ -204,7 +203,6 @@ const DiscoverMore = () => {
               })}
             </div>
 
-            {/* --- VIEW ALL BUTTON --- */}
             <div className="mt-12 md:mt-16 text-center">
               <Link 
                 to="/view-all" 

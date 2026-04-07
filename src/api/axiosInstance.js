@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Dynamically use the local URL during development, and Vercel in production
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://aldey-backend.vercel.app/api';
 
 const API = axios.create({
   baseURL: API_URL,

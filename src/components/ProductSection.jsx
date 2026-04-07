@@ -3,11 +3,21 @@ import { ShoppingCart, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext'; 
 
+// 🔥 SAFETY ARMOR: Prevents crashes if DB sends objects instead of text
+const safeText = (value, fallback = "") => {
+  if (!value) return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (Array.isArray(value)) {
+    if (typeof value[0] === 'object') return fallback; // Array of objects
+    return value.join(', '); // Array of strings
+  }
+  return fallback; // Raw object
+};
+
 const ProductSection = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   
-  // --- STATE & REFS ---
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -15,7 +25,6 @@ const ProductSection = () => {
   const isPaused = useRef(false); 
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // --- FETCH PRODUCTS FROM BACKEND ---
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -35,7 +44,6 @@ const ProductSection = () => {
     fetchProducts();
   }, []);
 
-  // --- CONTINUOUS INFINITE SCROLL LOGIC ---
   useEffect(() => {
     if (!products || products.length === 0) return;
     
@@ -49,11 +57,9 @@ const ProductSection = () => {
         if (scrollContainer.scrollLeft >= halfWidth) {
           scrollContainer.scrollLeft = 0; 
         } else {
-          // Adjust scroll speed here (1 = normal, 0.5 = slower, 2 = faster)
           scrollContainer.scrollLeft += 1; 
         }
 
-        // Sync the custom progress bar
         let progress = (scrollContainer.scrollLeft / halfWidth) * 100;
         if (progress > 100) progress = 100;
         setScrollProgress(progress);
@@ -62,19 +68,15 @@ const ProductSection = () => {
     };
     
     animationId = requestAnimationFrame(scroll);
-    
-    // Cleanup on unmount
     return () => cancelAnimationFrame(animationId);
   }, [products]);
 
-  // --- ADD TO CART HANDLER ---
   const handleAddToCart = (e, product) => {
     e.preventDefault(); 
     e.stopPropagation();
     addToCart(product);
   };
 
-  // Don't render the section if loading or empty
   if (isLoading) {
     return <div className="py-20 text-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black mx-auto"></div></div>;
   }
@@ -83,14 +85,11 @@ const ProductSection = () => {
 
   return (
     <div className="bg-white py-20 relative overflow-hidden select-none">
-      
-      {/* Hide native scrollbar */}
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* --- HEADER --- */}
       <div className="max-w-[1400px] mx-auto px-6 mb-12">
         <div className="text-center">
           <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-[0.2em] text-gray-900">
@@ -100,7 +99,6 @@ const ProductSection = () => {
         </div>
       </div>
 
-      {/* --- SCROLLABLE PRODUCTS CONTAINER --- */}
       <div className="pl-6">
         <div 
           ref={scrollRef}
@@ -111,7 +109,6 @@ const ProductSection = () => {
           className="flex overflow-x-auto hide-scrollbar gap-4 md:gap-6 pb-4"
           style={{ scrollBehavior: 'auto', pointerEvents: 'auto' }}
         >
-          {/* Render the list twice to create the infinite seamless loop */}
           {products.map((product, idx) => (
             <ProductCard 
               key={`a-${product._id || product.id}-${idx}`} 
@@ -131,7 +128,6 @@ const ProductSection = () => {
         </div>
       </div>
 
-      {/* --- CUSTOM PROGRESS / SCROLLBAR --- */}
       <div className="max-w-[1400px] mx-auto px-6 mt-6 md:mt-10">
         <div className="w-full h-[3px] bg-gray-200 relative overflow-hidden rounded-full">
           <div 
@@ -143,22 +139,20 @@ const ProductSection = () => {
           ></div>
         </div>
       </div>
-
     </div>
   );
 };
 
 // --- EXTRACTED PRODUCT CARD ---
 const ProductCard = ({ product, navigate, handleAddToCart }) => {
-  const productId = product._id || product.id; // Handle MongoDB ObjectId
+  const productId = product._id || product.id; 
 
   return (
     <div className="w-[calc(50vw-1.5rem)] md:w-[300px] lg:w-[320px] flex-shrink-0 bg-white rounded-sm shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col group/card">
-      {/* Image Link */}
       <Link to={`/product/${productId}`} className="relative w-full aspect-[4/5] bg-[#f9f9f9] overflow-hidden block">
         <img
           src={product.image || product.imageUrl || "https://via.placeholder.com/300"}
-          alt={product.name}
+          alt={safeText(product.name, "Product")}
           className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover/card:scale-110 mix-blend-multiply pointer-events-none"
         />
         
@@ -184,19 +178,20 @@ const ProductCard = ({ product, navigate, handleAddToCart }) => {
         </div>
       </Link>
 
-      {/* Details */}
       <div className="p-4 md:p-6 flex-1 flex flex-col text-center">
-        <p className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5 md:mb-2">
-          {product.vendor || "ALDAY"}
+        {/* 🔥 APPLY ARMOR TO TEXT FIELDS */}
+        <p className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5 md:mb-2 line-clamp-1">
+          {safeText(product.vendor, "ALDAY")}
         </p>
         <Link to={`/product/${productId}`}>
           <h3 className="text-xs md:text-sm font-bold text-gray-900 leading-snug mb-1.5 md:mb-2 hover:text-[#C5A059] transition-colors line-clamp-2 min-h-[34px] md:min-h-[40px]">
-            {product.name}
+            {safeText(product.name, "Clinical Formulation")}
           </h3>
         </Link>
         <p className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-widest mb-3 md:mb-4 line-clamp-1">
-          {product.concern || "Wellness"}
+          {safeText(product.concern, "Wellness")}
         </p>
+        
         <div className="mt-auto pt-3 md:pt-4 border-t border-gray-50">
           <div className="flex justify-center items-center gap-2 md:gap-3">
             {product.price < product.mrp && (

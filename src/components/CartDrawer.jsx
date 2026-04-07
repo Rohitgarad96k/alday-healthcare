@@ -7,18 +7,15 @@ const CartDrawer = () => {
   const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getCartTotal } = useCart();
   const navigate = useNavigate();
   
-  // Local state to track which item is currently being updated to prevent spam-clicking
   const [updatingItemId, setUpdatingItemId] = useState(null);
 
-  // Free Shipping Threshold logic
   const FREE_SHIPPING_THRESHOLD = 999;
   const currentTotal = getCartTotal();
   const amountToFreeShipping = FREE_SHIPPING_THRESHOLD - currentTotal;
   const progressPercentage = Math.min((currentTotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
-  // Wrapper function for updating quantity that handles the loading state
   const handleUpdateQuantity = async (id, delta) => {
-    if (updatingItemId) return; // Prevent overlapping requests
+    if (updatingItemId) return; 
     setUpdatingItemId(id);
     try {
       await updateQuantity(id, delta);
@@ -27,7 +24,6 @@ const CartDrawer = () => {
     }
   };
 
-  // Wrapper for removing item to handle loading state
   const handleRemoveItem = async (id) => {
     if (updatingItemId) return;
     setUpdatingItemId(id);
@@ -36,6 +32,18 @@ const CartDrawer = () => {
     } finally {
       setUpdatingItemId(null);
     }
+  };
+
+  // 🔥 SAFETY HELPER: Prevents React from crashing if an object sneaks into a text field
+  const safeText = (value, fallback = "ALDAY") => {
+    if (!value) return fallback;
+    if (Array.isArray(value)) {
+      // If it's an array of objects (like reviews), don't print it!
+      if (typeof value[0] === 'object') return fallback; 
+      return value.join(', ');
+    }
+    if (typeof value === 'object') return fallback;
+    return String(value);
   };
 
   return (
@@ -112,8 +120,7 @@ const CartDrawer = () => {
                 <div key={`${itemId}-${index}`} className={`flex gap-4 group transition-opacity ${isUpdating ? 'opacity-50' : 'opacity-100'}`}>
                   {/* Product Image */}
                   <div className="w-20 h-24 bg-[#F9F9F9] flex-shrink-0 overflow-hidden rounded-sm border border-gray-100 relative">
-                     <img src={item.image || item.productId?.image} alt={item.name || item.productId?.name} className="w-full h-full object-cover mix-blend-multiply" />
-                     {/* Show a spinner over the image if this specific item is updating */}
+                     <img src={item.image || item.productId?.image} alt={safeText(item.name || item.productId?.name, "Product")} className="w-full h-full object-cover mix-blend-multiply" />
                      {isUpdating && (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/50">
                           <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
@@ -125,8 +132,13 @@ const CartDrawer = () => {
                   <div className="flex-1 flex flex-col py-1">
                     <div className="flex justify-between items-start gap-2">
                       <div>
-                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{item.category || item.productId?.category || "ALDAY"}</p>
-                         <h3 className="font-bold text-sm text-gray-900 leading-snug line-clamp-2">{item.name || item.productId?.name}</h3>
+                         {/* 🔥 SAFETY FIX APPLIED HERE */}
+                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                           {safeText(item.category || item.productId?.category)}
+                         </p>
+                         <h3 className="font-bold text-sm text-gray-900 leading-snug line-clamp-2">
+                           {safeText(item.name || item.productId?.name, "Clinical Formulation")}
+                         </h3>
                       </div>
                       <button 
                         onClick={() => handleRemoveItem(itemId)} 
@@ -180,7 +192,7 @@ const CartDrawer = () => {
             <Link 
               to="/checkout" 
               onClick={(e) => {
-                if (updatingItemId) e.preventDefault(); // Prevent checkout while an update is happening
+                if (updatingItemId) e.preventDefault(); 
                 else setIsCartOpen(false);
               }}
               className={`w-full py-4 uppercase text-xs font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all duration-300 rounded-sm shadow-lg group ${

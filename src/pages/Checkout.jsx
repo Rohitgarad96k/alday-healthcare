@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import API from '../api/axiosInstance'; // 1. Import our secure API instance
+import API from '../api/axiosInstance'; 
 import {
     ChevronLeft, MapPin, CreditCard, ShieldCheck,
     Lock, ArrowRight, AlertCircle, Loader2
@@ -23,18 +23,26 @@ const Checkout = () => {
     const [step, setStep] = useState(1);
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [checkoutError, setCheckoutError] = useState(null); // 2. Added error state
+    const [checkoutError, setCheckoutError] = useState(null); 
 
     // Form States
     const [coupon, setCoupon] = useState("");
     const [appliedDiscount, setAppliedDiscount] = useState(0);
-    const [shippingDetails, setShippingDetails] = useState({
-        firstName: user?.name?.split(' ')[0] || user?.fullName?.split(' ')[0] || '',
-        lastName: user?.name?.split(' ')[1] || user?.fullName?.split(' ')[1] || '',
-        address: '',
-        city: '',
-        pincode: '',
-        phone: user?.phone || ''
+
+    // SMART ADDRESS PRE-FILL
+    const [shippingDetails, setShippingDetails] = useState(() => {
+        const savedDetails = localStorage.getItem(`alday_shipping_${user?._id || user?.id}`);
+        if (savedDetails) {
+            return JSON.parse(savedDetails);
+        }
+        return {
+            fullName: user?.fullName || user?.name || '',
+            address: '',
+            city: '',
+            state: '', // Required by backend
+            pincode: '',
+            phone: user?.phone || ''
+        };
     });
 
     useEffect(() => {
@@ -55,43 +63,64 @@ const Checkout = () => {
 
     const applyCoupon = () => {
         if (coupon.toUpperCase() === "ALDAY10") {
-            setAppliedDiscount(10); // 10% Off
+            setAppliedDiscount(10); 
             setCheckoutError(null);
         } else {
             setCheckoutError("Invalid Coupon Code. Try ALDAY10");
         }
     };
 
-    // 3. REAL API INTEGRATION FOR FINAL ORDER
+    // 3. PERFECTLY ALIGNED API INTEGRATION
     const handleFinalOrder = async () => {
         if (isProcessing) return;
         setIsProcessing(true);
         setCheckoutError(null);
 
         try {
-            // Format the address into a single string if your backend prefers it, 
-            // or pass it as an object based on your specific backend schema.
-            const fullAddress = `${shippingDetails.address}, ${shippingDetails.city} - ${shippingDetails.pincode}`;
+            // 🔥 Translate the frontend payment string to the strict Backend ENUM
+            let backendPaymentMethod = "OTHER";
+            if (paymentMethod === "cod") backendPaymentMethod = "COD";
+            if (paymentMethod === "card") backendPaymentMethod = "STRIPE";
+            if (paymentMethod === "upi") backendPaymentMethod = "RAZORPAY";
 
+            // 🔥 Exact Payload matching orderController.js
             const orderPayload = {
-                shippingAddress: fullAddress,
-                phone: shippingDetails.phone,
-                paymentMethod: paymentMethod,
-                totalAmount: total,
-                // Note: The backend usually pulls the items directly from the user's active Cart in the DB.
-                // If your backend specifically requires the items array in the order payload, uncomment below:
-                // items: cartItems.map(item => ({ product: item._id, quantity: item.quantity }))
+                items: cartItems.map(item => ({ 
+                    productId: String(item.productId || item._id), 
+                    quantity: Number(item.quantity)
+                })),
+                shippingAddress: {
+                    fullName: shippingDetails.fullName,
+                    phone: shippingDetails.phone,
+                    line1: shippingDetails.address,
+                    city: shippingDetails.city,
+                    state: shippingDetails.state || shippingDetails.city || "Not Provided", // Fallback if empty
+                    pincode: shippingDetails.pincode,
+                    country: "India"
+                },
+                payment: {
+                    method: backendPaymentMethod
+                },
+                couponCode: coupon ? coupon : undefined,
+                discountAmount: discountAmount,
+                shippingCharge: shipping,
+                taxRate: 0.18 // 18% tax
             };
 
-            // Call the Order API Endpoint (Adjust '/orders' if your Swagger doc uses '/order/create' etc.)
-            await API.post('/orders', orderPayload);
+            const token = localStorage.getItem('alday_auth_token');
+            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-            // Once the order is successfully created on the server, clear the cart
+            // Call Order API 
+            await API.post('/order', orderPayload, config);
+
+            // SAVE ADDRESS FOR NEXT TIME
+            localStorage.setItem(`alday_shipping_${user._id || user.id}`, JSON.stringify(shippingDetails));
+
+            // Clear Cart and Redirect
             if (typeof clearCart === 'function') {
-                await clearCart(); // Ensure this awaits the API.delete('/cart/clear') we set up earlier
+                await clearCart(); 
             }
             
-            // Redirect to success page
             navigate('/order-success'); 
 
         } catch (error) {
@@ -105,7 +134,6 @@ const Checkout = () => {
         }
     };
 
-    // If cart is empty, show empty state
     if (cartItems.length === 0) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white">
@@ -135,7 +163,7 @@ const Checkout = () => {
 
             <main className="max-w-[1200px] mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
                 <div className="flex-1 space-y-8">
-                    {/* Progress Indicator */}
+                    
                     <div className="flex items-center gap-6 mb-12">
                         <div className={`flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] ${step >= 1 ? 'text-black' : 'text-gray-300'}`}>
                             <span className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors ${step >= 1 ? 'border-black bg-black text-white' : 'border-gray-200'}`}>01</span>
@@ -148,7 +176,6 @@ const Checkout = () => {
                         </div>
                     </div>
 
-                    {/* Global Error Display */}
                     {checkoutError && (
                         <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-sm text-sm font-medium flex items-center gap-3 animate-fade-in">
                             <AlertCircle size={18} />
@@ -162,27 +189,33 @@ const Checkout = () => {
                                 <MapPin size={22} className="text-[#C5A059]" /> Delivery Information
                             </h2>
                             <form className="grid grid-cols-1 md:grid-cols-2 gap-5" onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">First Name</label>
-                                    <input type="text" name="firstName" value={shippingDetails.firstName} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
+                                
+                                <div className="space-y-1.5 md:col-span-2">
+                                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Full Name</label>
+                                    <input type="text" name="fullName" value={shippingDetails.fullName} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Last Name</label>
-                                    <input type="text" name="lastName" value={shippingDetails.lastName} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
-                                </div>
+                                
                                 <div className="space-y-1.5 md:col-span-2">
                                     <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Street Address</label>
                                     <input type="text" name="address" placeholder="House No, Street, Landmark" value={shippingDetails.address} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
                                 </div>
+
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">City</label>
                                     <input type="text" name="city" value={shippingDetails.city} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
                                 </div>
+                                
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">State</label>
+                                    <input type="text" name="state" value={shippingDetails.state} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
+                                </div>
+
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Pincode</label>
                                     <input type="text" name="pincode" value={shippingDetails.pincode} maxLength="6" onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
                                 </div>
-                                <div className="space-y-1.5 md:col-span-2">
+                                
+                                <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Mobile Number</label>
                                     <input type="tel" name="phone" value={shippingDetails.phone} onChange={handleInputChange} className="w-full border border-gray-200 p-3.5 rounded-sm text-sm focus:border-black outline-none transition-colors" required />
                                 </div>
@@ -244,14 +277,12 @@ const Checkout = () => {
                     )}
                 </div>
 
-                {/* RIGHT: Order Summary */}
                 <div className="w-full lg:w-[420px]">
                     <div className="bg-white border border-gray-100 p-8 rounded-sm sticky top-28 shadow-sm">
                         <h3 className="font-bold uppercase tracking-[0.2em] text-xs mb-8 border-b border-gray-50 pb-4">Order Summary ({cartItems.length})</h3>
 
                         <div className="max-h-[300px] overflow-y-auto pr-3 mb-8 space-y-5 custom-scrollbar">
                             {cartItems.map((item, index) => {
-                                // Fallback for ID and Image mapping depending on how the backend returns items
                                 const itemId = item._id || item.id || index;
                                 const itemImg = item.image || item.productId?.image;
                                 const itemName = item.name || item.productId?.name;

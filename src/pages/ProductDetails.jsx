@@ -491,22 +491,6 @@ const ProductDetails = () => {
         </div>
       </div>
 
-      <section className="w-full h-[400px] md:h-[500px] relative overflow-hidden bg-black flex items-center justify-center cursor-pointer group my-16 md:my-24" onClick={() => setShowVideo(true)}>
-        <img
-          src="https://images.unsplash.com/photo-1556228720-191738e4a2e5?auto=format&fit=crop&w=1600&q=80"
-          alt="Results Video Banner"
-          className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000"
-          loading="lazy"
-        />
-        <div className="relative z-10 text-center text-white px-6">
-          <div className="w-20 h-20 rounded-full border border-white/50 flex items-center justify-center mb-6 mx-auto group-hover:bg-[#C5A059] group-hover:border-[#C5A059] transition-all duration-500 shadow-2xl backdrop-blur-sm group-hover:scale-110">
-            <Play size={32} fill="currentColor" className="ml-1.5" />
-          </div>
-          <h2 className="text-3xl md:text-5xl font-serif font-bold uppercase tracking-widest mb-4 drop-shadow-lg">Real Results</h2>
-          <p className="text-[10px] md:text-xs font-bold tracking-[0.3em] uppercase text-gray-200">Watch the clinical efficacy story</p>
-        </div>
-      </section>
-
       <section className="py-20 md:py-24 bg-white border-t border-gray-100">
         <div className="max-w-[1200px] mx-auto px-6">
           <h2 className="text-2xl md:text-4xl font-serif font-bold tracking-tight mb-12 md:mb-16 text-center text-gray-900">Real Reviews</h2>

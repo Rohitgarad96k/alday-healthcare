@@ -2,48 +2,33 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext'; 
+//  1. Import the global context
+import { useProducts } from '../context/ProductContext'; 
 
-// 🔥 SAFETY ARMOR: Prevents crashes if DB sends objects instead of text
+//  SAFETY ARMOR: Prevents crashes if DB sends objects instead of text
 const safeText = (value, fallback = "") => {
   if (!value) return fallback;
   if (typeof value === 'string' || typeof value === 'number') return value;
   if (Array.isArray(value)) {
-    if (typeof value[0] === 'object') return fallback; // Array of objects
-    return value.join(', '); // Array of strings
+    if (typeof value[0] === 'object') return fallback; 
+    return value.join(', '); 
   }
-  return fallback; // Raw object
+  return fallback; 
 };
 
 const ProductSection = () => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  // Added setIsCartOpen so the drawer slides out when adding from here too!
+  const { addToCart, setIsCartOpen } = useCart();
   
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  //  2. Instantly grab the data from global state!
+  const { products, isLoading } = useProducts();
   
   const scrollRef = useRef(null);
   const isPaused = useRef(false); 
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('https://aldey-backend.vercel.app/api/product?limit=1000');
-        if (!response.ok) throw new Error('Failed to fetch products');
-        
-        const data = await response.json();
-        const fetchedProducts = data.data || data.products || [];
-        setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
+  // We only keep the useEffect that handles the auto-scrolling animation
   useEffect(() => {
     if (!products || products.length === 0) return;
     
@@ -75,6 +60,7 @@ const ProductSection = () => {
     e.preventDefault(); 
     e.stopPropagation();
     addToCart(product);
+    if(setIsCartOpen) setIsCartOpen(true);
   };
 
   if (isLoading) {
@@ -109,7 +95,8 @@ const ProductSection = () => {
           className="flex overflow-x-auto hide-scrollbar gap-4 md:gap-6 pb-4"
           style={{ scrollBehavior: 'auto', pointerEvents: 'auto' }}
         >
-          {products.map((product, idx) => (
+          {/* We map the products twice to create the infinite scroll illusion */}
+          {products.slice(0, 8).map((product, idx) => (
             <ProductCard 
               key={`a-${product._id || product.id}-${idx}`} 
               product={product} 
@@ -117,7 +104,7 @@ const ProductSection = () => {
               handleAddToCart={handleAddToCart} 
             />
           ))}
-          {products.map((product, idx) => (
+          {products.slice(0, 8).map((product, idx) => (
             <ProductCard 
               key={`b-${product._id || product.id}-${idx}`} 
               product={product} 
@@ -179,7 +166,7 @@ const ProductCard = ({ product, navigate, handleAddToCart }) => {
       </Link>
 
       <div className="p-4 md:p-6 flex-1 flex flex-col text-center">
-        {/* 🔥 APPLY ARMOR TO TEXT FIELDS */}
+        {/* APPLY ARMOR TO TEXT FIELDS */}
         <p className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5 md:mb-2 line-clamp-1">
           {safeText(product.vendor, "ALDAY")}
         </p>

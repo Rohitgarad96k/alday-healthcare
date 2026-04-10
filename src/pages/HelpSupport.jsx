@@ -93,7 +93,7 @@ const HelpSupport = () => {
   };
 
   return (
-    <div className="bg-[#FBFBFB] min-h-screen font-sans text-gray-900 pb-20 pt-20 ">
+    <div className="bg-[#FBFBFB] min-h-screen font-sans text-gray-900 pb-20 pt-10 md:pt-20 ">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         
         {/* Main Grid Layout */}

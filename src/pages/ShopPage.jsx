@@ -4,8 +4,8 @@ import { X, Filter, ChevronDown, Check, Heart, Eye, ArrowRight, ShoppingBag, Sli
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
-// ✅ 1. Import the new centralized service instead of raw API
-import productService from '../api/productService'; 
+//  1. Import the global context
+import { useProducts } from '../context/ProductContext'; 
 
 const ShopPage = () => {
   const location = useLocation();
@@ -16,9 +16,15 @@ const ShopPage = () => {
   const { addToCart, setIsCartOpen } = cartContext;
   const { toggleWishlist, isInWishlist } = wishlistContext;
 
-  // --- BACKEND STATE ---
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  //  2. Instantly grab the data from global state!
+  const { products: globalProducts, isLoading } = useProducts();
+
+  //  3. Filter out Draft products so customers only see active ones
+  const products = useMemo(() => {
+    return Array.isArray(globalProducts) 
+      ? globalProducts.filter(p => p.status !== 'Draft') 
+      : [];
+  }, [globalProducts]);
 
   // --- EXISTING STATES ---
   const [category, setCategory] = useState("All");
@@ -30,33 +36,6 @@ const ShopPage = () => {
   const [toastMsg, setToastMsg] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
-
-  // --- ✅ 2. FETCH PRODUCTS VIA CENTRALIZED SERVICE ---
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      try {
-        // Use the service function and pass the query parameters
-        const data = await productService.getAllProducts('?limit=1000');
-        
-        // Extract array from response safely
-        const fetchedProducts = data.data || data.products || data || [];
-        
-        // Filter out Draft products so customers only see active ones
-        const activeProducts = Array.isArray(fetchedProducts) 
-          ? fetchedProducts.filter(p => p.status !== 'Draft') 
-          : [];
-
-        setProducts(activeProducts); 
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
 
   // --- INSTANT ROUTING FIX ---
   useEffect(() => {
@@ -88,12 +67,10 @@ const ShopPage = () => {
       const singularQuery = cleanQuery.endsWith('s') ? cleanQuery.slice(0, -1) : cleanQuery; 
 
       result = result.filter(p => {
-        // 🔥 FIX 1: Safely extract ingredient names from the arrays
         const catText = Array.isArray(p?.category) ? p.category.join(' ') : (p?.category || '');
         const activesText = Array.isArray(p?.keyActives) ? p.keyActives.map(a => a.name).join(' ') : '';
         const ingredientsText = Array.isArray(p?.fullIngredients) ? p.fullIngredients.map(i => i.name).join(' ') : '';
 
-        // 🔥 FIX 2: Add activesText and ingredientsText into the search checking string!
         const combinedText = String(`${p?.name} ${catText} ${p?.concern} ${p?.description} ${activesText} ${ingredientsText}`).toLowerCase();
         const cleanCombined = combinedText.replace(/[^a-z0-9]/g, '');
         
@@ -109,7 +86,6 @@ const ShopPage = () => {
       const singularCat = cleanCat.endsWith('s') ? cleanCat.slice(0, -1) : cleanCat;
 
       result = result.filter(p => {
-        // 🔥 FIX 3: Do the same extraction for sidebar category clicks
         const catText = Array.isArray(p?.category) ? p.category.join(' ') : (p?.category || '');
         const activesText = Array.isArray(p?.keyActives) ? p.keyActives.map(a => a.name).join(' ') : '';
         const ingredientsText = Array.isArray(p?.fullIngredients) ? p.fullIngredients.map(i => i.name).join(' ') : '';
@@ -199,7 +175,7 @@ const ShopPage = () => {
         </div>
       )}
 
-      <section className="bg-white py-16 md:py-28 border-b border-gray-100 relative overflow-hidden mt-16">
+      <section className="bg-white py-16 md:py-28 border-b border-gray-100 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-to-b from-[#C5A059]/5 to-transparent rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="container mx-auto px-6 text-center relative z-10">

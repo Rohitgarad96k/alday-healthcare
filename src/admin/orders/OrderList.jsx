@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Package, AlertCircle, Eye, Loader2, XCircle, Search, Filter, Calendar, ChevronDown } from 'lucide-react'; // 🔥 Added ChevronDown
+import React, { useState } from 'react';
+import { Package, AlertCircle, Eye, Loader2, XCircle, Search, Filter, Calendar, ChevronDown } from 'lucide-react'; 
 import { Link } from 'react-router-dom'; 
 import API from '../../api/axiosInstance'; 
+//  1. Import the global context
+import { useOrders } from '../../context/OrderContext';
 
 const OrderList = () => {
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  //  2. Grab orders and loading states instantly from memory!
+  const { orders, setOrders, isLoading, error, fetchOrders } = useOrders();
+  
   const [updatingId, setUpdatingId] = useState(null); 
 
   // State for Filtering, Searching, and Dates
@@ -17,47 +19,14 @@ const OrderList = () => {
 
   const getToken = () => localStorage.getItem('alday_auth_token') || localStorage.getItem('admin_token');
 
-  // 1. READ: Fetch all orders
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      
-      const token = getToken();
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      
-      const res = await API.get('/admin/orders', config).catch(() => API.get('/admin/order', config));
-      
-      let rawOrders = [];
-      if (res.data && Array.isArray(res.data.orders)) {
-          rawOrders = res.data.orders;
-      } else if (res.data && Array.isArray(res.data)) {
-          rawOrders = res.data;
-      } else if (Array.isArray(res.data?.data)) {
-          rawOrders = res.data.data;
-      }
-      
-      // Sort newest first
-      const sortedOrders = [...rawOrders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setOrders(sortedOrders); 
-      setError('');
-    } catch (err) {
-      console.error("Failed to fetch orders:", err);
-      setError('Failed to load orders. Please check your connection.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //  NOTE: Local fetchOrders and useEffect on mount have been completely removed!
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  // 2. UPDATE: Change order status
+  // UPDATE: Change order status
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       setUpdatingId(orderId);
       
-      // Update local state instantly (Optimistic UI)
+      // Update GLOBAL state instantly (Optimistic UI)
       setOrders(orders.map(order => 
         (order._id || order.id) === orderId ? { ...order, status: newStatus } : order
       ));
@@ -70,7 +39,7 @@ const OrderList = () => {
     } catch (err) {
       console.error("Failed to update order status:", err);
       alert(err.response?.data?.message || "Failed to update status. Reverting to previous state.");
-      fetchOrders(); 
+      fetchOrders(); //  Re-sync global state if backend fails
     } finally {
       setUpdatingId(null);
     }
@@ -151,7 +120,6 @@ const OrderList = () => {
         <p className="text-sm text-gray-500 mt-1">Track, update, and manage customer orders.</p>
       </div>
       
-      {/* 🔥 UPGRADED PREMIUM FILTERS BAR: All in one line */}
       <div className="flex flex-col xl:flex-row gap-4 items-center mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100 w-full">
         
         {/* Search Bar */}
@@ -195,7 +163,7 @@ const OrderList = () => {
           )}
         </div>
 
-        {/* 🔥 NEW: Status Dropdown Filter */}
+        {/* Status Dropdown Filter */}
         <div className="relative w-full xl:w-48 flex-shrink-0">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <select
@@ -209,7 +177,6 @@ const OrderList = () => {
               </option>
             ))}
           </select>
-          {/* Custom Chevron for the select dropdown */}
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
             <ChevronDown size={14} />
           </div>

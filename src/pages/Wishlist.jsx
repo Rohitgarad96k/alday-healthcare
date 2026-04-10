@@ -22,7 +22,7 @@ const Wishlist = () => {
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col font-sans text-gray-900">
 
-      <div className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-12 md:py-20 mt-16">
+      <div className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-12 md:py-20">
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold uppercase tracking-widest mb-2">My Wishlist</h1>
           <p className="text-gray-500">{wishlistItems.length} {wishlistItems.length === 1 ? 'Item' : 'Items'} Saved</p>

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ShoppingCart, Eye, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import productService from '../api/productService'; 
 import { useCart } from '../context/CartContext';
+//  1. Import the global context
+import { useProducts } from '../context/ProductContext';
 
-// 🔥 SAFETY ARMOR
+//  SAFETY ARMOR
 const safeText = (value, fallback = "") => {
   if (!value) return fallback;
   if (typeof value === 'string' || typeof value === 'number') return value;
@@ -19,34 +20,8 @@ const BestSellers = () => {
   const navigate = useNavigate();
   const { addToCart, setIsCartOpen } = useCart();
   
-  const [bestSellers, setBestSellers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchBestSellers = async () => {
-      try {
-        setIsLoading(true);
-        const data = await productService.getAllProducts();
-        const allProducts = data.data || data.products || [];
-        
-        let best = allProducts.filter(product => product.bestSeller === true);
-
-        if (best.length === 0) {
-          best = allProducts.slice(0, 4);
-        } else {
-          best = best.slice(0, 4);
-        }
-
-        setBestSellers(best);
-      } catch (error) {
-        console.error("Failed to fetch bestsellers:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBestSellers();
-  }, []);
+  //  2. Instantly grab the data from global state!
+  const { products, isLoading } = useProducts();
 
   const handleAddToCart = (e, product) => {
     e.preventDefault(); 
@@ -61,6 +36,14 @@ const BestSellers = () => {
          <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" />
       </section>
     );
+  }
+
+  //  3. Calculate bestsellers instantly (no useEffect needed)
+  let bestSellers = products.filter(product => product.bestSeller === true);
+  if (bestSellers.length === 0) {
+    bestSellers = products.slice(0, 4); // Fallback if none are starred
+  } else {
+    bestSellers = bestSellers.slice(0, 4); // Cap at 4
   }
 
   if (!bestSellers || bestSellers.length === 0) return null;
@@ -83,7 +66,7 @@ const BestSellers = () => {
           {bestSellers.map((product) => {
             const uniqueId = product.productId || product._id;
             
-            // 🔥 SECURED CATEGORY DISPLAY
+            //  SECURED CATEGORY DISPLAY
             const displayCategory = safeText(product.category, "ALDAY");
 
             return (

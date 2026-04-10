@@ -135,7 +135,7 @@ const TrackOrder = () => {
 
   return (
     <div className="bg-white min-h-screen font-sans">
-      <main className="max-w-[1200px] mx-auto px-6 py-20 mt-16">
+      <main className="max-w-[1200px] mx-auto px-6 py-20 ">
         <div className="max-w-3xl mx-auto">
           
           <div className="text-center mb-12">

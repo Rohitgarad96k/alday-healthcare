@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CartProvider } from './context/CartContext';
+// 🔥 NEW: Imported the Product Provider
+import { ProductProvider } from './context/ProductContext'; 
 
 // --- GLOBAL UI COMPONENTS ---
 import ScrollToTop from './components/ScrollToTop';
@@ -25,10 +27,11 @@ import AdminDashboard from './admin/AdminDashboard';
 import ProductList from './admin/products/ProductList';
 import AdminLogin from './admin/AdminLogin';
 import OrderList from './admin/orders/OrderList';
-import OrderDetails from './admin/orders/OrderDetails'; // 🔥 ADDED: Imported the new Order Details page
+import OrderDetails from './admin/orders/OrderDetails'; 
 import BestsellerList from './admin/bestsellers/BestsellerList'; 
 import PoliciesPage from './pages/policies/PoliciesPage';
 import Invoice from './pages/Invoice';
+import { OrderProvider } from './context/OrderContext';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
 const DermaAnalyser = lazy(() => import('./pages/DermaAnalyser'));
@@ -107,62 +110,66 @@ function App() {
       <AuthProvider>
         <WishlistProvider>
           <CartProvider>
-            <ScrollToTop />
-            <Routes>
-              {/* PUBLIC ROUTES */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/view-all" element={<ShopPage />} />
-                <Route path="/product/:id" element={<ProductDetails />} />
+            <ProductProvider>
+              <OrderProvider>
+                <ScrollToTop />
+                <Routes>
+                  {/* PUBLIC ROUTES */}
+                  <Route element={<PublicLayout />}>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/view-all" element={<ShopPage />} />
+                    <Route path="/product/:id" element={<ProductDetails />} />
 
-                <Route path="/invoice" element={<ProtectedUserRoute><Invoice /></ProtectedUserRoute>} />
+                    <Route path="/invoice" element={<ProtectedUserRoute><Invoice /></ProtectedUserRoute>} />
 
-                <Route path="/derma-analyser" element={<DermaAnalyser />} />
-                <Route path="/founders-corner" element={<FoundersCorner />} />
-                <Route path="/our-story" element={<OurStory />} />
+                    <Route path="/derma-analyser" element={<DermaAnalyser />} />
+                    <Route path="/founders-corner" element={<FoundersCorner />} />
+                    <Route path="/our-story" element={<OurStory />} />
 
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/wishlist" element={<Wishlist />} />
-                <Route path="/track-order" element={<TrackOrder />} />
-                <Route path="/help-support" element={<HelpSupport />} />
-                <Route path="/policies" element={<PoliciesPage />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/wishlist" element={<Wishlist />} />
+                    <Route path="/track-order" element={<TrackOrder />} />
+                    <Route path="/help-support" element={<HelpSupport />} />
+                    <Route path="/policies" element={<PoliciesPage />} />
 
 
-                {/* PROTECTED USER ROUTES */}
-                <Route path="/account" element={
-                  <ProtectedUserRoute>
-                    <Account />
-                  </ProtectedUserRoute>
-                } />
-                <Route path="/checkout" element={
-                  <ProtectedUserRoute>
-                    <Checkout />
-                  </ProtectedUserRoute>
-                } />
-                <Route path="/order-success" element={
-                  <ProtectedUserRoute>
-                    <Success />
-                  </ProtectedUserRoute>
-                } />
-              </Route>
+                    {/* PROTECTED USER ROUTES */}
+                    <Route path="/account" element={
+                      <ProtectedUserRoute>
+                        <Account />
+                      </ProtectedUserRoute>
+                    } />
+                    <Route path="/checkout" element={
+                      <ProtectedUserRoute>
+                        <Checkout />
+                      </ProtectedUserRoute>
+                    } />
+                    <Route path="/order-success" element={
+                      <ProtectedUserRoute>
+                        <Success />
+                      </ProtectedUserRoute>
+                    } />
+                  </Route>
 
-              {/* ADMIN ROUTES */}
-              <Route path="/admin/login" element={<AdminLogin />} />
+                  {/* ADMIN ROUTES */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
 
-              <Route path="/admin" element={
-                <ProtectedAdminRoute>
-                  <AdminLayout />
-                </ProtectedAdminRoute>
-              }>
-                <Route index element={<AdminDashboard />} />
-                <Route path="products" element={<ProductList />} />
-                <Route path="bestsellers" element={<BestsellerList />} />
-                <Route path="orders" element={<OrderList />} />
-                <Route path="order/:id" element={<OrderDetails />} /> {/* 🔥 ADDED: Registered the new Order Details route */}
-              </Route>
+                  <Route path="/admin" element={
+                    <ProtectedAdminRoute>
+                      <AdminLayout />
+                    </ProtectedAdminRoute>
+                  }>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="products" element={<ProductList />} />
+                    <Route path="bestsellers" element={<BestsellerList />} />
+                    <Route path="orders" element={<OrderList />} />
+                    <Route path="order/:id" element={<OrderDetails />} /> 
+                  </Route>
 
-            </Routes>
+                </Routes>
+              </OrderProvider>
+            </ProductProvider>
           </CartProvider>
         </WishlistProvider>
       </AuthProvider>

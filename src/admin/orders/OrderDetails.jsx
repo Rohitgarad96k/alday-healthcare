@@ -1,38 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, CreditCard, User, Loader2, XCircle } from 'lucide-react';
 import API from '../../api/axiosInstance'; 
+//  1. Import the global context
+import { useOrders } from '../../context/OrderContext';
 
 const OrderDetails = () => {
   const { id } = useParams(); 
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  
+  //  2. Instantly grab orders and loading state from memory
+  const { orders, isLoading, fetchOrders } = useOrders();
+  
+  //  3. Find the specific order instantly
+  const order = orders.find(o => (o._id || o.id) === id);
+
   const [updating, setUpdating] = useState(false);
 
   const getToken = () => localStorage.getItem('alday_auth_token') || localStorage.getItem('admin_token');
 
-  const fetchOrderDetails = async () => {
-    try {
-      setLoading(true);
-      const token = getToken();
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      
-      const res = await API.get(`/admin/order/${id}`, config);
-      setOrder(res.data?.order || res.data);
-    } catch (err) {
-      console.error("Failed to fetch order details:", err);
-      setError("Failed to load order details. Please check your connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrderDetails();
-  }, [id]);
-
-  // 🔥 UPDATE: Change order status and forcefully re-fetch from database
+  // UPDATE: Change order status and forcefully re-sync GLOBAL database
   const handleStatusChange = async (newStatus) => {
     try {
       setUpdating(true);
@@ -41,8 +27,8 @@ const OrderDetails = () => {
       
       await API.patch(`/admin/order/${id}/status`, { status: newStatus }, config);
       
-      // Re-fetch to guarantee the UI matches the database exactly
-      await fetchOrderDetails();
+      //  Tell global context to update so the OrderList is fresh when we go back!
+      await fetchOrders();
     } catch (err) {
       console.error("Failed to update order status:", err);
       alert(err.response?.data?.message || "Failed to update status. Please try again.");
@@ -51,7 +37,7 @@ const OrderDetails = () => {
     }
   };
 
-  // 🔥 NEW: Handle Payment Status Changes (e.g., COD to PAID)
+  // Handle Payment Status Changes
   const handlePaymentStatusChange = async (e) => {
     const newPaymentStatus = e.target.value;
     if (!newPaymentStatus) return;
@@ -61,10 +47,9 @@ const OrderDetails = () => {
       const token = getToken();
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       
-      // Adjust this URL if your backend route is slightly different (e.g. /admin/orders/... )
       await API.patch(`/admin/order/${id}/payment-status`, { status: newPaymentStatus }, config);
       
-      await fetchOrderDetails(); // Sync with DB
+      await fetchOrders(); //  Sync global DB
     } catch (err) {
       console.error("Failed to update payment status:", err);
       alert(err.response?.data?.message || "Failed to update payment status.");
@@ -96,7 +81,7 @@ const OrderDetails = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="py-20 flex flex-col items-center justify-center space-y-4 text-slate-500">
         <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
@@ -105,10 +90,10 @@ const OrderDetails = () => {
     );
   }
 
-  if (error || !order) {
+  if (!order) {
     return (
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
-        <p className="text-red-500 font-bold mb-4">{error || "Order not found."}</p>
+        <p className="text-red-500 font-bold mb-4">Order not found.</p>
         <Link to="/admin/orders" className="text-indigo-600 font-bold uppercase tracking-widest text-xs hover:underline">
           &larr; Back to Orders
         </Link>
@@ -135,7 +120,7 @@ const OrderDetails = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Order #{order.orderNumber || String(order._id).slice(-6).toUpperCase()}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              Placed on {new Date(order.createdAt || order.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
           
@@ -190,7 +175,7 @@ const OrderDetails = () => {
             </p>
           </div>
 
-          {/* 🔥 UPDATED: Payment Info with Dropdown */}
+          {/* Payment Info */}
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col h-full">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-4 flex items-center gap-2"><CreditCard size={14} /> Payment Details</h3>
             <p className="text-gray-700 text-sm mb-3"><span className="font-medium">Method:</span> {order.payment?.method || 'N/A'}</p>
@@ -219,7 +204,7 @@ const OrderDetails = () => {
                <p className="text-gray-700 text-xs break-all mb-3"><span className="font-medium">Txn ID:</span> {order.payment.gatewayPaymentId}</p>
             )}
             
-            <p className="text-gray-700 text-sm font-bold mt-auto border-t border-gray-200 pt-3">Total: ₹{(order.totalAmount || 0).toLocaleString('en-IN')}</p>
+            <p className="text-gray-700 text-sm font-bold mt-auto border-t border-gray-200 pt-3">Total: ₹{(order.totalAmount || order.totalPrice || 0).toLocaleString('en-IN')}</p>
           </div>
         </div>
 

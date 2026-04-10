@@ -4,22 +4,27 @@ import {
   ArrowRight, Check, RefreshCcw, Loader2, 
   Sun, Moon, Mail, Share2, Upload, Camera, Zap, ChevronDown, ChevronUp, ScanFace
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion'; // Added for smooth transitions
-import { products } from '../data';
+import { motion, AnimatePresence } from 'framer-motion'; 
+
+// 🔥 1. Import global context instead of local data.js
+import { useProducts } from '../context/ProductContext'; 
 
 const DermaAnalyser = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null); // Reference for the hidden file input
+  const fileInputRef = useRef(null); 
   
+  // 🔥 2. Grab real products from your database!
+  const { products } = useProducts();
+
   // --- STATES ---
-  const [view, setView] = useState('landing'); // 'landing' or 'quiz'
+  const [view, setView] = useState('landing'); 
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState({});
   const [analyzing, setAnalyzing] = useState(false);
   const [routine, setRoutine] = useState({ am: [], pm: [] });
   const [expertTip, setExpertTip] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadedImagePreview, setUploadedImagePreview] = useState(null); // Store actual image
+  const [uploadedImagePreview, setUploadedImagePreview] = useState(null); 
 
   // --- 1. LANDING PAGE HANDLERS ---
   const startAnalysis = (type) => {
@@ -69,11 +74,8 @@ const DermaAnalyser = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Create a local preview URL
       const imageUrl = URL.createObjectURL(file);
       setUploadedImagePreview(imageUrl);
-      
-      // Start the simulated scan automatically once a file is chosen
       startScanSimulation();
     }
   };
@@ -87,7 +89,7 @@ const DermaAnalyser = () => {
   const startScanSimulation = () => {
     let progress = 0;
     const interval = setInterval(() => {
-      progress += 15; // Sped up slightly for better UX
+      progress += 15; 
       setUploadProgress(progress);
       if (progress >= 100) {
         clearInterval(interval);
@@ -96,24 +98,39 @@ const DermaAnalyser = () => {
     }, 400);
   };
 
+  // 🔥 4. Generates routine using REAL DB products!
   const generateRoutine = () => {
     setStep('analyzing');
     setTimeout(() => {
-      const relevantProducts = products.filter(p => 
-        (p.category === "Hair Care" || p.category === "Skincare")
-      ).slice(0, 3);
+      // Filter out Drafts
+      const activeProducts = products.filter(p => p.status !== 'Draft');
+      
+      // Try to find products that match their selected focus (Skincare/Haircare)
+      let relevantProducts = activeProducts.filter(p => {
+         const cat = Array.isArray(p.category) ? p.category.join(' ') : (p.category || '');
+         return cat.includes(answers.focus) || p.concern?.includes(answers.focus);
+      });
 
-      // Ensure we have enough products to display safely
-      const safeProducts = relevantProducts.length >= 3 ? relevantProducts : [...products].slice(0,3);
+      // Fallback: If we don't have enough matching products, just grab any active ones
+      if (relevantProducts.length < 3) {
+         relevantProducts = [...activeProducts];
+      }
 
-      setRoutine({ am: [safeProducts[0], safeProducts[1]], pm: [safeProducts[0], safeProducts[2]] });
+      // Ensure we have at least something to show
+      const safeProducts = relevantProducts.slice(0, 3);
+      
+      const amRoutine = safeProducts.length >= 2 ? [safeProducts[0], safeProducts[1]] : safeProducts;
+      const pmRoutine = safeProducts.length >= 3 ? [safeProducts[0], safeProducts[2]] : safeProducts;
+
+      setRoutine({ am: amRoutine, pm: pmRoutine });
       setExpertTip(`Based on your AI Scan for ${answers.concern || 'your concerns'}, your barrier needs strengthening before active treatment.`);
       setStep('results');
     }, 2500);
   };
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans text-gray-900 pt-[104px]">
+    // 🔥 FIX: Removed pt-[104px] here so it sits flush under the Navbar!
+    <div className="bg-white min-h-screen flex flex-col font-sans text-gray-900">
       
       <AnimatePresence mode="wait">
         {/* VIEW 1: LANDING PAGE */}
@@ -134,7 +151,7 @@ const DermaAnalyser = () => {
                      
                      <div className="flex flex-col sm:flex-row gap-4">
                         <button 
-                          onClick={() => startAnalysis("Hair Care")}
+                          onClick={() => startAnalysis("Haircare")}
                           className="bg-black text-white px-8 py-4 uppercase text-xs font-bold tracking-[0.15em] hover:bg-gray-800 transition-all shadow-lg"
                         >
                           Start Hair Analysis
@@ -152,7 +169,7 @@ const DermaAnalyser = () => {
                   <div className="md:w-1/2 relative">
                      <div className="absolute inset-0 border-2 border-[#C5A059]/30 rounded-full animate-ping opacity-20"></div>
                      <img 
-                       src="https://images.unsplash.com/photo-1596462502278-27bfdd403348?auto=format&fit=crop&w=800&q=80" 
+                       src="https://images.unsplash.com/photo-1725000421356-d69d04370385?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fEFJJTIwYmFzZWQlMjBEZXJtYSUyMGFuYWx5c2lzLnxlbnwwfHwwfHx8MA%3D%3D" 
                        alt="AI Analysis" 
                        className="w-full h-auto rounded-lg shadow-2xl relative z-10"
                      />
@@ -167,14 +184,14 @@ const DermaAnalyser = () => {
                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                   {[
                     { title: "Take a Quick Quiz", desc: "Answer questions about your type & goals.", img: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400" },
-                    { title: "Upload a Selfie", desc: "Our AI scans 50+ skin parameters.", img: "https://images.unsplash.com/photo-1590611936760-eeb9f59d7d64?w=400" },
-                    { title: "Receive Routine", desc: "Get a clinical prescription instantly.", img: "https://images.unsplash.com/photo-1556228578-8d8448ad1d4d?w=400" }
+                    { title: "Upload a Selfie", desc: "Our AI scans 50+ skin parameters.", img: "https://images.unsplash.com/photo-1619451334792-150fd785ee74?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHBlcnNvbmFsJTIwY2FyZXxlbnwwfHwwfHx8MA%3D%3D" },
+                    { title: "Receive Routine", desc: "Get a clinical prescription instantly.", img: "https://images.unsplash.com/photo-1599847987657-881f11b92a75?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" }
                   ].map((item, i) => (
                     <div key={i} className="group cursor-default">
                        <div className="h-64 overflow-hidden rounded-sm mb-6 relative">
                           <img src={item.img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={item.title}/>
                           <div className="absolute top-4 left-4 bg-black text-white w-8 h-8 flex items-center justify-center font-bold rounded-full">
-                             {i+1}
+                              {i+1}
                           </div>
                        </div>
                        <h3 className="text-lg font-bold uppercase tracking-wide mb-2">{item.title}</h3>
@@ -342,27 +359,27 @@ const DermaAnalyser = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                        <div>
                           <h3 className="font-bold text-lg uppercase tracking-widest mb-4 flex items-center gap-2"><Sun size={18}/> Morning</h3>
-                          {routine.am.map((p, i) => (
+                          {routine.am.length > 0 ? routine.am.map((p, i) => (
                              <div key={i} className="flex gap-4 mb-4 border p-3 rounded-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/product/${p.id || p._id}`)}>
-                                <img src={p.image} className="w-16 h-16 object-cover rounded-sm" alt={p.name}/>
+                                <img src={p.image || p.imageUrl || "https://via.placeholder.com/150"} className="w-16 h-16 object-contain mix-blend-multiply rounded-sm" alt={p.name}/>
                                 <div>
-                                   <p className="text-[10px] font-bold text-gray-400 uppercase">Step {i+1}</p>
-                                   <h4 className="font-bold text-sm">{p.name}</h4>
+                                   <p className="text-[10px] font-bold text-[#C5A059] uppercase">Step {i+1}</p>
+                                   <h4 className="font-bold text-sm line-clamp-2">{p.name}</h4>
                                 </div>
                              </div>
-                          ))}
+                          )) : <p className="text-sm text-gray-500">Add products to your store first!</p>}
                        </div>
                        <div>
                           <h3 className="font-bold text-lg uppercase tracking-widest mb-4 flex items-center gap-2"><Moon size={18}/> Night</h3>
-                          {routine.pm.map((p, i) => (
+                          {routine.pm.length > 0 ? routine.pm.map((p, i) => (
                              <div key={i} className="flex gap-4 mb-4 border p-3 rounded-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/product/${p.id || p._id}`)}>
-                                <img src={p.image} className="w-16 h-16 object-cover rounded-sm" alt={p.name}/>
+                                <img src={p.image || p.imageUrl || "https://via.placeholder.com/150"} className="w-16 h-16 object-contain mix-blend-multiply rounded-sm" alt={p.name}/>
                                 <div>
-                                   <p className="text-[10px] font-bold text-gray-400 uppercase">Step {i+1}</p>
-                                   <h4 className="font-bold text-sm">{p.name}</h4>
+                                   <p className="text-[10px] font-bold text-[#C5A059] uppercase">Step {i+1}</p>
+                                   <h4 className="font-bold text-sm line-clamp-2">{p.name}</h4>
                                 </div>
                              </div>
-                          ))}
+                          )) : <p className="text-sm text-gray-500">Add products to your store first!</p>}
                        </div>
                     </div>
 

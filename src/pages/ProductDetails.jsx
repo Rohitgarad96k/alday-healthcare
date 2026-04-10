@@ -3,17 +3,18 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Star, Minus, Plus, ShoppingBag, ChevronDown,
   ShieldCheck, Leaf, Droplet, CheckCircle, Heart, Share2,
-  MapPin, Play, X, Check
+  MapPin, X, Check
 } from 'lucide-react';
 
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
+//  1. Import global context
+import { useProducts } from '../context/ProductContext';
 
-import productService from '../api/productService';
 import API from '../api/axiosInstance';
 
-// 🔥 SAFETY ARMOR: Prevents React from crashing on corrupted DB fields
+// Safety wrapper for corrupted text arrays
 const safeText = (value, fallback = "") => {
   if (!value) return fallback;
   if (typeof value === 'string' || typeof value === 'number') return value;
@@ -33,9 +34,12 @@ const ProductDetails = () => {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { user } = useAuth();
 
-  const [product, setProduct] = useState(null);
-  const [relatedProducts, setRelatedProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  //  2. Grab products instantly from memory
+  const { products, isLoading } = useProducts();
+
+  //  3. Derive current product and related items without fetching
+  const product = products.find(p => p._id === id || p.productId === id || String(p.id) === String(id));
+  const relatedProducts = products.filter(p => p._id !== id && p.productId !== id).slice(0, 4);
 
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
@@ -53,35 +57,9 @@ const ProductDetails = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Reset UI when navigating between different products
   useEffect(() => {
-    const fetchProductData = async () => {
-      setIsLoading(true);
-      try {
-        const data = await productService.getAllProducts('?limit=1000');
-        const allProducts = data.data || data.products || [];
-
-        const foundProduct = allProducts.find(p => p._id === id || p.productId === id || String(p.id) === String(id));
-
-        if (!foundProduct) {
-          throw new Error('Product not found in database');
-        }
-
-        setProduct(foundProduct);
-
-        const filteredRelated = allProducts.filter(p => p._id !== id && p.productId !== id);
-        setRelatedProducts(filteredRelated.slice(0, 4));
-
-      } catch (error) {
-        console.error("Error fetching product details:", error);
-        setProduct(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProductData();
     window.scrollTo({ top: 0, behavior: 'instant' });
-
     setActiveImg(0);
     setQty(1);
     setUpsellSelected(false);
@@ -582,7 +560,6 @@ const ProductDetails = () => {
                     <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1.5">
                       {safeText(item.category, "ALDAY")}
                     </p>
-                    {/* 🔥 THE LINE THAT WAS CRASHING IS NOW PROTECTED */}
                     <h3 className="font-bold text-xs md:text-sm mb-3 line-clamp-2 group-hover:text-[#C5A059] transition-colors leading-snug">
                       {safeText(item.name, "Clinical Formulation")}
                     </h3>

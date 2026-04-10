@@ -4,7 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext'; 
 import { useWishlist } from '../context/WishlistContext';
 
-// 🔥 SAFETY ARMOR: Protects React from crashing if the DB sends weird objects
+//  1. Import the global context
+import { useProducts } from '../context/ProductContext'; 
+
+//  SAFETY ARMOR: Protects React from crashing if the DB sends weird objects
 const safeText = (value, fallback = "") => {
   if (!value) return fallback;
   if (typeof value === 'string' || typeof value === 'number') return value;
@@ -23,47 +26,30 @@ const DiscoverMore = () => {
   const { addToCart, setIsCartOpen } = cartContext;
   const { toggleWishlist, isInWishlist } = wishlistContext;
 
-  const [allProducts, setAllProducts] = useState([]);
+  //  2. Instantly grab the data and loading state from global context
+  const { products, isLoading } = useProducts();
+
   const [randomProducts, setRandomProducts] = useState([]);
-  const [isFetching, setIsFetching] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addingState, setAddingState] = useState({}); 
 
+  //  3. Shuffle products instantly once they load into the context
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsFetching(true);
-      try {
-        const response = await fetch('https://aldey-backend.vercel.app/api/product?limit=1000');
-        if (!response.ok) throw new Error('Failed to fetch products');
-        
-        const data = await response.json();
-        
-        const fetchedProducts = data.data || data.products || [];
-        const productsArray = Array.isArray(fetchedProducts) ? fetchedProducts : [];
-        
-        setAllProducts(productsArray);
-        
-        if (productsArray.length > 0) {
-          const shuffled = [...productsArray].sort(() => 0.5 - Math.random());
-          setRandomProducts(shuffled.slice(0, 4));
-        }
-
-      } catch (error) {
-        console.error("Error loading products for Discover More:", error);
-      } finally {
-        setIsFetching(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
+    if (products && products.length > 0) {
+      const activeProducts = products.filter(p => p.status !== 'Draft'); // Optional: only show active ones
+      const shuffled = [...activeProducts].sort(() => 0.5 - Math.random());
+      setRandomProducts(shuffled.slice(0, 4));
+    }
+  }, [products]);
 
   const shuffleProducts = () => {
-    if (allProducts.length === 0) return;
+    if (!products || products.length === 0) return;
     
     setIsRefreshing(true);
+    // Add a tiny delay just for the UI animation effect
     setTimeout(() => {
-      const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
+      const activeProducts = products.filter(p => p.status !== 'Draft');
+      const shuffled = [...activeProducts].sort(() => 0.5 - Math.random());
       setRandomProducts(shuffled.slice(0, 4));
       setIsRefreshing(false);
     }, 400); 
@@ -89,7 +75,7 @@ const DiscoverMore = () => {
     if (toggleWishlist) toggleWishlist(product);
   };
 
-  if (!isFetching && randomProducts.length === 0) return null;
+  if (!isLoading && randomProducts.length === 0) return null;
 
   return (
     <section className="py-16 md:py-24 bg-[#FBFBFB] border-t border-gray-100 select-none overflow-hidden font-sans">
@@ -106,7 +92,7 @@ const DiscoverMore = () => {
           
           <button 
             onClick={shuffleProducts}
-            disabled={isRefreshing || isFetching}
+            disabled={isRefreshing || isLoading}
             className="mt-6 md:mt-0 md:absolute md:right-0 md:bottom-0 flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[#12221A] transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={`${isRefreshing ? 'animate-spin text-[#C5A059]' : ''}`} />
@@ -114,7 +100,7 @@ const DiscoverMore = () => {
           </button>
         </div>
 
-        {isFetching ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-50">
             <Loader2 size={40} className="animate-spin text-[#C5A059] mb-4" />
             <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Curating Collection...</span>
@@ -158,7 +144,7 @@ const DiscoverMore = () => {
                     </div>
 
                     <div className="text-center flex flex-col flex-1 px-4 pb-6">
-                        {/* 🔥 SAFETY FIX FOR CATEGORY */}
+                        
                         <p className="text-[8px] md:text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">
                           {safeText(product.category || product.concern, "ALDAY")}
                         </p>
@@ -173,7 +159,6 @@ const DiscoverMore = () => {
                            {[...Array(5)].map((_, i) => (
                              <Star key={i} size={10} className="text-[#C5A059] fill-[#C5A059]" />
                            ))}
-                           {/* 🔥 THE CRITICAL FIX: Safe length check for reviews */}
                            <span className="text-[9px] text-gray-400 ml-1.5 font-bold">
                              ({Array.isArray(product.reviews) ? product.reviews.length : (product.reviewCount || Math.floor(Math.random() * 200) + 20)})
                            </span>

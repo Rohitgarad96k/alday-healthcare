@@ -14,7 +14,7 @@ const Hero = () => {
     },
     {
       id: 2,
-      image: "https://images.unsplash.com/photo-1615397323868-d0505a415ff5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+      image: "https://plus.unsplash.com/premium_photo-1661641241213-0b592a6a4c81?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fFNjYWxwJTIwbWFzc2FnZSUyMGhhaXIlMjBjYXJlJTIwYWVzdGhldGljfGVufDB8fDB8fHww",
       alt: "Natural ingredients and clinical lab setup"
     },
     {
@@ -32,7 +32,7 @@ const Hero = () => {
   }, [slides.length]);
 
   return (
-    <div className="relative h-[90vh] md:h-screen w-full bg-black overflow-hidden mt-16 md:mt-0">
+    <div className="relative h-[90vh] md:h-[screen] w-full bg-black overflow-hidden">
       
       {/* Background Slideshow */}
       {slides.map((slide, index) => (

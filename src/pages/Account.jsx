@@ -6,8 +6,19 @@ import { useWishlist } from '../context/WishlistContext';
 import API from '../api/axiosInstance';
 import {
   Package, MapPin, User as UserIcon, LogOut, ChevronRight,
-  Heart, CreditCard, Gift, Settings, Download, Edit3, Trash2, ShieldCheck, Bell, Check, Menu, X
-} from 'lucide-react'; // 🔥 Added Menu and X icons
+  Heart, CreditCard, Gift, Settings, Download, Edit3, Trash2, ShieldCheck, Bell, Check, Menu, X, Loader2
+} from 'lucide-react'; 
+
+//  SAFETY ARMOR: Protects React from crashing if the DB sends weird objects
+const safeText = (value, fallback = "") => {
+  if (!value) return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (Array.isArray(value)) {
+    if (typeof value[0] === 'object') return fallback;
+    return value.join(', ');
+  }
+  return fallback;
+};
 
 const Account = () => {
   const { user, logout, setUser } = useAuth();
@@ -16,7 +27,7 @@ const Account = () => {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false); // 🔥 Added mobile nav state
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false); 
 
   // --- BACKEND STATES ---
   const [orders, setOrders] = useState([]);
@@ -55,6 +66,7 @@ const Account = () => {
         const token = localStorage.getItem('alday_auth_token');
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
+        // Security: Only fetches THIS user's specific orders
         const res = await API.get('/order/my', config);
 
         let rawOrders = [];
@@ -127,7 +139,6 @@ const Account = () => {
     }
   };
 
-  // 🔥 Define tabs centrally to use in both mobile and desktop menus
   const tabsConfig = [
     { id: 'dashboard', icon: <UserIcon size={16} />, label: 'Dashboard' },
     { id: 'orders', icon: <Package size={16} />, label: 'Orders' },
@@ -192,8 +203,9 @@ const Account = () => {
             <h2 className="text-xl font-serif font-bold uppercase tracking-widest mb-6 hidden md:block">Order History</h2>
 
             {loadingOrders ? (
-              <div className="flex justify-center py-20">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-black"></div>
+              <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                <Loader2 size={40} className="animate-spin text-[#C5A059] mb-4" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Orders...</span>
               </div>
             ) : orders.length === 0 ? (
               <div className="bg-white border border-gray-200 rounded-sm p-12 text-center">
@@ -286,10 +298,13 @@ const Account = () => {
                         <img src={item.image || item.images?.[0]} alt={item.name} className="w-full h-full object-contain mix-blend-multiply p-2" />
                       </div>
                       <div className="ml-4 flex flex-col justify-center flex-1">
-                        <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold mb-1">
-                          {Array.isArray(item.category) ? item.category.join(', ') : (item.category || 'Care')}
+                        {/*  SAFETY ARMOR APPLIED HERE */}
+                        <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold mb-1 line-clamp-1">
+                          {safeText(item.category, "ALDAY")}
                         </p>
-                        <Link to={`/product/${uniqueId}`} className="font-bold text-sm mb-1 hover:text-[#C5A059] transition-colors line-clamp-1">{item.name}</Link>
+                        <Link to={`/product/${uniqueId}`} className="font-bold text-sm mb-1 hover:text-[#C5A059] transition-colors line-clamp-1">
+                          {safeText(item.name, "Clinical Formulation")}
+                        </Link>
                         <p className="font-bold text-gray-900 mb-3 text-sm">₹{item.price}</p>
                         <div className="flex items-center gap-3 mt-auto">
                           <button
@@ -519,7 +534,7 @@ const Account = () => {
 
       <div className="max-w-[1200px] mx-auto px-6 py-8 md:py-16 flex flex-col md:flex-row gap-10 items-start">
 
-        {/* 🔥 NEW: Mobile Premium Menu Trigger Button */}
+        {/* Mobile Premium Menu Trigger Button */}
         <div className="w-full md:hidden mb-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Navigate To</p>
           <button
@@ -533,7 +548,7 @@ const Account = () => {
           </button>
         </div>
 
-        {/* 🔥 NEW: Mobile Slide-Out Drawer overlay */}
+        {/* Mobile Slide-Out Drawer overlay */}
         <div className={`md:hidden fixed inset-0 z-[200] transition-opacity duration-300 ${isMobileNavOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
 
           {/* Backdrop Blur */}
@@ -574,7 +589,7 @@ const Account = () => {
           </div>
         </div>
 
-        {/* ORIGINAL: Desktop Sidebar (Hidden on mobile now!) */}
+        {/* Desktop Sidebar */}
         <div className="hidden md:block w-full md:w-1/4 md:sticky md:top-32 self-start z-10">
           <div className="bg-white border border-gray-200 rounded-sm overflow-hidden flex flex-col shadow-sm">
             {tabsConfig.map((tab) => (

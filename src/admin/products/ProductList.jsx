@@ -1,40 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ProductModal from '../ProductModal'; 
 import productService from '../../api/productService'; 
 import { Star, Image as ImageIcon, AlertCircle, Search, Filter, ChevronDown, ArrowUpDown } from 'lucide-react';
+//  1. Import the global context
+import { useProducts } from '../../context/ProductContext';
 
 const ProductList = () => {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  //  2. Grab global state instead of fetching locally!
+  const { products, setProducts, isLoading, error, fetchProducts } = useProducts();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
 
   // State for Filtering, Searching, and Sorting
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, ACTIVE, OUT_OF_STOCK, BESTSELLER
-  const [sortOption, setSortOption] = useState('NEWEST'); // NEWEST, OLDEST, PRICE_HIGH, PRICE_LOW, NAME_A_Z, NAME_Z_A
+  const [statusFilter, setStatusFilter] = useState('ALL'); 
+  const [sortOption, setSortOption] = useState('NEWEST'); 
 
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true);
-      const data = await productService.getAllProducts();
-      const fetchedProducts = data.data || data.products || data || [];
-      
-      setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []); 
-      setError('');
-    } catch (err) {
-      console.error("Failed to fetch products:", err);
-      setError('Failed to load products. Please check your connection.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  //  NOTE: We completely deleted the local fetchProducts and useEffect here!
 
   const handleDelete = async (product) => {
     const idForUrl = product.productId || product._id || product.id;
@@ -42,6 +25,7 @@ const ProductList = () => {
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       try {
         await productService.deleteProduct(idForUrl);
+        // Updating global state instantly
         setProducts(products.filter(p => (p.productId || p._id || p.id) !== idForUrl));
       } catch (err) {
         alert(err.response?.data?.message || "Failed to delete product.");
@@ -56,7 +40,7 @@ const ProductList = () => {
     const newStatus = !product.bestSeller; 
     const previousProducts = [...products];
 
-    // Optimistic UI Update
+    // Optimistic Global UI Update
     setProducts(products.map(p => 
       (p.productId || p._id || p.id) === idForUrl ? { ...p, bestSeller: newStatus } : p
     ));
@@ -71,6 +55,7 @@ const ProductList = () => {
     } catch (error) {
       console.error("Failed to update bestseller status:", error);
       alert("Failed to save bestseller status to database. Reverting.");
+      // Rollback global state on failure
       setProducts(previousProducts);
     }
   };
@@ -80,10 +65,9 @@ const ProductList = () => {
     setIsModalOpen(true);
   };
 
-  // 🔥 FILTER & SORT LOGIC
+  // FILTER & SORT LOGIC
   const filteredAndSortedProducts = products
     .filter((product) => {
-      // 1. Status Filter
       let matchesStatus = true;
       const inStock = product.countInStock > 0;
       
@@ -91,7 +75,6 @@ const ProductList = () => {
       if (statusFilter === 'OUT_OF_STOCK') matchesStatus = !inStock;
       if (statusFilter === 'BESTSELLER') matchesStatus = !!product.bestSeller;
 
-      // 2. Search Filter (Checks Name and Category)
       const searchString = searchTerm.toLowerCase();
       const productName = (product.name || '').toLowerCase();
       const productCategory = Array.isArray(product.category) 
@@ -103,7 +86,6 @@ const ProductList = () => {
       return matchesStatus && matchesSearch;
     })
     .sort((a, b) => {
-      // 🔥 3. Sorting Logic
       if (sortOption === 'NEWEST') {
         return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       }
@@ -116,7 +98,6 @@ const ProductList = () => {
       if (sortOption === 'PRICE_LOW') {
         return (a.price || 0) - (b.price || 0);
       }
-      // 🔥 NEW: Alphabetical Sorting
       if (sortOption === 'NAME_A_Z') {
         return (a.name || '').localeCompare(b.name || '');
       }
@@ -144,7 +125,6 @@ const ProductList = () => {
     { value: 'OLDEST', label: 'DATE: OLDEST FIRST' },
     { value: 'PRICE_HIGH', label: 'PRICE: HIGH TO LOW' },
     { value: 'PRICE_LOW', label: 'PRICE: LOW TO HIGH' },
-    // 🔥 NEW: Alphabetical Sorting Options Added
     { value: 'NAME_A_Z', label: 'NAME: A TO Z' },
     { value: 'NAME_Z_A', label: 'NAME: Z TO A' }
   ];
@@ -338,6 +318,7 @@ const ProductList = () => {
         </div>
       )}
 
+      {/* Note: fetchProducts is passed so the modal can refresh the global list when saving */}
       <ProductModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 

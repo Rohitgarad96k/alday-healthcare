@@ -62,7 +62,6 @@ const Footer = () => {
             <h5 className="font-bold text-xs uppercase tracking-[0.2em] mb-8 text-white">Explore</h5>
             <ul className="space-y-4 text-xs font-bold tracking-widest text-gray-400 uppercase">
               <li><Link to="/derma-analyser" className="hover:text-[#C5A059] transition-colors">Derma Analyser</Link></li>
-              <li><Link to="/rituals" className="hover:text-[#C5A059] transition-colors">Clinical Rituals</Link></li>
               <li><Link to="/our-story" className="hover:text-[#C5A059] transition-colors">Our Story</Link></li>
               <li><Link to="/founders-corner" className="hover:text-[#C5A059] transition-colors">Founders Corner</Link></li>
             </ul>
@@ -81,9 +80,9 @@ const Footer = () => {
           <div>
             <h5 className="font-bold text-xs uppercase tracking-[0.2em] mb-8 text-white">Legal</h5>
             <ul className="space-y-4 text-xs font-bold tracking-widest text-gray-400 uppercase">
-              <li><Link to="/policies#privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-              <li><Link to="/policies#terms" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
-              <li><Link to="/policies#refund" className="hover:text-white transition-colors">Cancellation & Refund</Link></li>
+              <li><Link to="/policies#privacy" className="hover:text-[#C5A059] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/policies#terms" className="hover:text-[#C5A059] transition-colors">Terms & Conditions</Link></li>
+              <li><Link to="/policies#refund" className="hover:text-[#C5A059] transition-colors">Cancellation & Refund</Link></li>
             </ul>
           </div>
         </div>

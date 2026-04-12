@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Star, ShoppingBag, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, Layers, Star, ShoppingBag, LogOut, Menu, X } from 'lucide-react';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -8,8 +8,11 @@ const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem('isAdminLoggedIn');
-    navigate('/admin/login');
+    // 🔥 FIX: Explicitly destroy the actual admin token used by Axios and App.jsx
+    localStorage.removeItem('adminToken');
+    
+    // 🔥 FIX: Force a hard redirect to clear all React state
+    window.location.href = '/admin/login';
   };
 
   const navItems = [

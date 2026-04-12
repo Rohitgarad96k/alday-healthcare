@@ -46,12 +46,10 @@ const HelpSupport = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // Limit message to 500 characters
     if (name === 'message' && value.length > 500) return;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- BACKEND SUBMISSION ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('loading');
@@ -75,8 +73,6 @@ const HelpSupport = () => {
       if (response.ok) {
         setStatus('success');
         setFormData({ firstName: '', lastName: '', email: '', phone: '', message: '' });
-        
-        // Reset success message after 5 seconds
         setTimeout(() => setStatus('idle'), 5000);
       } else {
         const data = await response.json().catch(() => ({}));
@@ -96,7 +92,6 @@ const HelpSupport = () => {
     <div className="bg-[#FBFBFB] min-h-screen font-sans text-gray-900 pb-20 pt-10 md:pt-20 ">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         
-        {/* Main Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-24 mb-24">
           
           {/* --- LEFT COLUMN: Contact Info --- */}
@@ -110,67 +105,66 @@ const HelpSupport = () => {
             </p>
 
             <div className="space-y-8 mb-12">
-              {/* Phone Block */}
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0">
+              {/* Phone Block - Interactive */}
+              <a href="tel:+918487965500" className="flex items-start gap-4 group">
+                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0 group-hover:bg-[#C5A059]/10 transition-colors">
                   <Phone size={20} className="text-[#C5A059]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-[#12221A] mb-1 uppercase tracking-widest text-xs">Call us</h3>
-                  <a href="tel:+918000000000" className="text-gray-600 hover:text-[#C5A059] transition-colors block text-sm font-medium">
-                    +91 80000 00000
-                  </a>
+                  <span className="text-gray-600 group-hover:text-[#C5A059] transition-colors block text-sm font-medium font-mono">
+                    +91 84879 65500
+                  </span>
                   <span className="text-xs text-gray-400">Mon-Sat, 9am to 6pm</span>
                 </div>
-              </div>
+              </a>
 
-              {/* Email Block */}
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0">
+              {/* Email Block - Interactive */}
+              <a href="mailto:alday.rajkot@gmail.com" className="flex items-start gap-4 group">
+                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0 group-hover:bg-[#C5A059]/10 transition-colors">
                   <Mail size={20} className="text-[#C5A059]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-[#12221A] mb-1 uppercase tracking-widest text-xs">Chat with us</h3>
-                  <a href="mailto:info@alday.com" className="text-gray-600 hover:text-[#C5A059] transition-colors block text-sm font-medium">
-                    info@alday.com
-                  </a>
-                  <a href="mailto:support@alday.com" className="text-gray-600 hover:text-[#C5A059] transition-colors block text-sm font-medium">
-                    support@alday.com
-                  </a>
+                  <span className="text-gray-600 group-hover:text-[#C5A059] transition-colors block text-sm font-medium">
+                    alday.rajkot@gmail.com
+                  </span>
                 </div>
-              </div>
+              </a>
 
-              {/* Address Block */}
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0">
+              {/* Address Block - Interactive */}
+              <a 
+                href="https://www.google.com/maps/search/?api=1&query=Alday+Healthcare+India+Ltd+Umiya-4+Ribda+Rajkot+Gujarat" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="flex items-start gap-4 group"
+              >
+                <div className="w-12 h-12 bg-[#12221A]/5 rounded-full flex items-center justify-center shrink-0 group-hover:bg-[#C5A059]/10 transition-colors">
                   <MapPin size={20} className="text-[#C5A059]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-[#12221A] mb-1 uppercase tracking-widest text-xs">Visit us</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed max-w-[250px] font-medium">
-                    Alday Healthcare HQ,<br />
-                    123 Clinical Avenue, Bio-Tech Park,<br />
-                    Pune, Maharashtra, India
+                  <p className="text-gray-600 group-hover:text-[#C5A059] transition-colors text-sm leading-relaxed max-w-[250px] font-medium">
+                    Alday Healthcare India Ltd,<br />
+                    Umiya-4, Ribda,<br />
+                    Rajkot, Gujarat
                   </p>
                 </div>
-              </div>
+              </a>
             </div>
 
             {/* Social Follow Section */}
             <div>
               <h4 className="font-bold text-[#12221A] mb-4 uppercase tracking-widest text-[10px]">Follow Us</h4>
               <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
-                  <Twitter size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
+                <a href="https://instagram.com/aldayhealth" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
                   <Instagram size={18} />
                 </a>
-                <a href="#" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
-                  <MessageCircle size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
+                <a href="https://facebook.com/aldayhealth" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
                   <Facebook size={18} />
+                </a>
+                <a href="https://twitter.com/aldayhealth" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#12221A] text-white rounded-full flex items-center justify-center hover:bg-[#C5A059] hover:-translate-y-1 transition-all">
+                  <Twitter size={18} />
                 </a>
               </div>
             </div>
@@ -178,10 +172,7 @@ const HelpSupport = () => {
 
           {/* --- RIGHT COLUMN: The Form --- */}
           <div className="bg-[#12221A] p-8 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-center border border-[#1A2E24]">
-            
-            {/* Subtle background decoration */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#C5A059] opacity-5 blur-[100px] pointer-events-none"></div>
-
             <h2 className="text-2xl font-bold text-white mb-8">Send us a message</h2>
 
             {status === 'success' ? (
@@ -194,7 +185,6 @@ const HelpSupport = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-                
                 {status === 'error' && (
                   <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg flex items-start gap-3">
                     <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
@@ -247,7 +237,7 @@ const HelpSupport = () => {
                       disabled={status === 'loading'}
                       value={formData.phone} onChange={handleInputChange}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:bg-white/10 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all disabled:opacity-50"
-                      placeholder="+91 00000 00000"
+                      placeholder="+91 84879 65500"
                     />
                   </div>
                 </div>
@@ -282,7 +272,6 @@ const HelpSupport = () => {
               </form>
             )}
           </div>
-          
         </div>
 
         {/* --- FAQ SECTION --- */}
@@ -333,4 +322,4 @@ const HelpSupport = () => {
   );
 };
 
-export default HelpSupport;
+export default HelpSupport; 

@@ -8,6 +8,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { CartProvider } from './context/CartContext';
 // 🔥 NEW: Imported the Product Provider
 import { ProductProvider } from './context/ProductContext'; 
+import { OrderProvider } from './context/OrderContext';
 
 // --- GLOBAL UI COMPONENTS ---
 import ScrollToTop from './components/ScrollToTop';
@@ -29,9 +30,9 @@ import AdminLogin from './admin/AdminLogin';
 import OrderList from './admin/orders/OrderList';
 import OrderDetails from './admin/orders/OrderDetails'; 
 import BestsellerList from './admin/bestsellers/BestsellerList'; 
+
 import PoliciesPage from './pages/policies/PoliciesPage';
 import Invoice from './pages/Invoice';
-import { OrderProvider } from './context/OrderContext';
 
 // --- LAZY LOADED PAGES (Only for secondary pages) ---
 const DermaAnalyser = lazy(() => import('./pages/DermaAnalyser'));

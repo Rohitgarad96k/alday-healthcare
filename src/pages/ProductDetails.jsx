@@ -419,8 +419,8 @@ const ProductDetails = () => {
                   onClick={handleAddToCart}
                   disabled={isOutOfStock}
                   className={`w-full sm:flex-1 h-[56px] text-white font-bold uppercase tracking-[0.15em] transition-all duration-300 flex justify-center items-center gap-3 text-xs md:text-sm rounded-sm active:scale-[0.98] ${isOutOfStock
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-black hover:bg-[#C5A059] shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_25px_rgba(197,160,89,0.3)]'
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-black hover:bg-[#C5A059] shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_25px_rgba(197,160,89,0.3)]'
                     }`}
                 >
                   {isOutOfStock ? (

@@ -95,7 +95,7 @@ const Navbar = () => {
     { label: "OUR STORY", link: "/our-story" }
   ];
 
-  const menuItems = ['HAIRCARE', 'SKINCARE', 'BODYCARE', 'GIFTING', 'RITUALS', 'EXPLORE'];
+  const menuItems = ['HAIRCARE', 'SKINCARE', 'BODYCARE', 'GIFTING', 'BUNDLES', 'EXPLORE'];
   const trendingSearches = ['Rosemary Hair Oil', 'Vitamin C Serum', 'Anti-Dandruff', 'Sunscreen SPF 50'];
 
   return (
@@ -462,7 +462,7 @@ const Navbar = () => {
             </Link>
             
             <Link 
-              to="/view-all?cat=Rituals" 
+              to="/view-all?cat=Bundles" 
               onClick={() => setIsMobileMenuOpen(false)}
               className="block py-4 px-3 -mx-3 rounded-lg border-b border-gray-100 text-sm font-bold uppercase tracking-widest active:bg-gray-100 active:text-[#C5A059] transition-colors"
             >

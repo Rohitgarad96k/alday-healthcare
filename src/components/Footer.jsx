@@ -1,6 +1,7 @@
 import React from 'react';
 import { Facebook, Instagram, Twitter, Youtube, ArrowRight, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo_white.png';
 
 const Footer = () => {
   return (
@@ -13,8 +14,11 @@ const Footer = () => {
           {/* Brand Info */}
           <div className="lg:w-1/3">
             <Link to="/" className="text-3xl font-bold tracking-widest block mb-6 uppercase">
-              ALDAY<span className="font-light">HEALTH</span>
-              <span className="text-[#C5A059] ml-1">.</span>
+              <img 
+                src={logo}
+                alt="Alday Health Logo" 
+                className="h-8 md:h-12 object-contain" 
+              />
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed mb-8 max-w-sm">
               100% Natural, Clinical Nutrition for your Hair & Skin.

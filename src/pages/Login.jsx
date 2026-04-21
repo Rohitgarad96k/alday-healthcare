@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext'; 
@@ -7,7 +7,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation(); 
-  const { login } = useAuth(); 
+  const { login, user } = useAuth(); 
   
   // States
   const [email, setEmail] = useState('');
@@ -16,6 +16,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const from = location.state?.from || '/';
+
+  useEffect(() => {
+    if (user) {
+      navigate('/account', { replace: true });
+    }
+  }, [user, navigate]);
 
   // Handle Submit
   const handleSubmit = async (e) => {
@@ -37,8 +43,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 md:p-8 font-sans">
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex min-h-[600px] relative">
-        <div className="absolute top-4 right-4 z-20">
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex min-h-[600px] relative" >
+        <div className="absolute top-2 right-4 z-20">
           <Link to="/" className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><X size={16} /></Link>
         </div>
 

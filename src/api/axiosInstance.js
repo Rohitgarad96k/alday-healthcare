@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Dynamically use the local URL during development, and Vercel in production
 const API_URL = import.meta.env.VITE_API_URL || 'https://aldey-backend.vercel.app/api';
 
 const API = axios.create({
@@ -10,7 +9,7 @@ const API = axios.create({
   }
 });
 
-// Request Interceptor: Attach Secure Tokens to every request
+// Request Interceptor: Attach Secure Tokens to every request dynamically
 API.interceptors.request.use((req) => {
   const adminToken = localStorage.getItem('adminToken');
   const userToken = localStorage.getItem('alday_auth_token');
@@ -20,6 +19,7 @@ API.interceptors.request.use((req) => {
   const token = isAdminPanel ? adminToken : (userToken || adminToken);
   
   if (token) {
+    // Inject token freshly on every single request
     req.headers.Authorization = `Bearer ${token}`;
   }
   return req;
@@ -33,44 +33,23 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 🔥 FIX 1: AUTO-RETRY FOR "COLD STARTS"
-    // If it's a network error or a Vercel 504 Timeout, try again silently!
+    // AUTO-RETRY FOR "COLD STARTS" (Vercel 500/504 Errors)
     if (originalRequest && (!error.response || error.response.status >= 500)) {
       originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
       
-      // We will try up to 2 extra times
       if (originalRequest._retryCount <= 2) {
          console.warn(`Server waking up... Retrying request (${originalRequest._retryCount}/2)`);
-         
-         // Wait 1.5 seconds to give Vercel and MongoDB time to boot up
          await new Promise(resolve => setTimeout(resolve, 1500));
-         
-         // Fire the request again automatically!
          return API(originalRequest);
       }
     }
 
-    // 🔥 FIX 2: SECURITY LOGOUT (401/403)
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      const hadUserToken = localStorage.getItem('alday_auth_token');
-      const hadAdminToken = localStorage.getItem('adminToken');
-      
-      if (hadUserToken || hadAdminToken) {
-          console.warn("Session expired or unauthorized. Logging out to protect user data.");
-          
-          // Clear all tokens
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('alday_active_user');
-          localStorage.removeItem('alday_auth_token');
-          
-          // Redirect to the correct login page
-          if (window.location.pathname.startsWith('/admin')) {
-             window.location.href = '/admin/login';
-          } else {
-             window.location.href = '/login';
-          }
-      }
+    // If the backend returns a 401, the app will just ignore it and KEEP you logged in.
+    // You will only be logged out when you physically click the "Logout" button.
+    if (error.response && error.response.status === 401) {
+        console.error(`Backend returned 401 Unauthorized for route: ${originalRequest.url}. (Ignored to keep user logged in)`);
     }
+    
     return Promise.reject(error);
   }
 );

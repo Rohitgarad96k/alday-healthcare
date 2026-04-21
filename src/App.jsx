@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CartProvider } from './context/CartContext';
 // 🔥 NEW: Imported the Product Provider
-import { ProductProvider } from './context/ProductContext'; 
+import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
 
 // --- GLOBAL UI COMPONENTS ---
@@ -28,8 +28,8 @@ import AdminDashboard from './admin/AdminDashboard';
 import ProductList from './admin/products/ProductList';
 import AdminLogin from './admin/AdminLogin';
 import OrderList from './admin/orders/OrderList';
-import OrderDetails from './admin/orders/OrderDetails'; 
-import BestsellerList from './admin/bestsellers/BestsellerList'; 
+import OrderDetails from './admin/orders/OrderDetails';
+import BestsellerList from './admin/bestsellers/BestsellerList';
 
 import PoliciesPage from './pages/policies/PoliciesPage';
 import Invoice from './pages/Invoice';
@@ -81,11 +81,13 @@ const PublicLayout = () => {
       <Navbar />
       <CartDrawer />
       <main className="flex-1">
-        <Suspense fallback={<PageLoader />}>
-          <PageWrapper>
-            <Outlet /> {/* This renders whichever public page is currently active */}
-          </PageWrapper>
-        </Suspense>
+        <div className="pt-[80px]">
+          <Suspense fallback={<PageLoader />}>
+            <PageWrapper>
+              <Outlet />
+            </PageWrapper>
+          </Suspense>
+        </div>
       </main>
       <Footer />
       <BackToTop />
@@ -165,7 +167,7 @@ function App() {
                     <Route path="products" element={<ProductList />} />
                     <Route path="bestsellers" element={<BestsellerList />} />
                     <Route path="orders" element={<OrderList />} />
-                    <Route path="order/:id" element={<OrderDetails />} /> 
+                    <Route path="order/:id" element={<OrderDetails />} />
                   </Route>
 
                 </Routes>
@@ -175,6 +177,7 @@ function App() {
         </WishlistProvider>
       </AuthProvider>
     </Router>
+
   );
 }
 

@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import logo from '../assets/logo_black.png';
 
 const Navbar = () => {
   const [activeMenu, setActiveMenu] = useState(null);
@@ -100,12 +101,7 @@ const Navbar = () => {
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-white group">
-
-        {/* NOTIFICATION BAR */}
-        <div className="bg-[#F8F8F8] text-[#1A1A1A] text-[10px] md:text-xs font-bold tracking-[0.15em] text-center py-2.5 border-b border-gray-100 relative z-50">
-          100% NATURAL NUTRITION &nbsp;|&nbsp; NO CHEMICALS &nbsp;|&nbsp; NO PRESERVATIVES
-        </div>
+      <div className="fixed top-0 left-0 w-full z-[999] bg-white/90 backdrop-blur-md shadow-sm group">
 
         {/* MAIN NAVIGATION */}
         <nav className="bg-white border-b border-gray-100 relative z-50">
@@ -113,16 +109,21 @@ const Navbar = () => {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 z-50 text-decoration-none flex-shrink-0" onClick={() => setIsSearchOpen(false)}>
-              <span className="text-xl md:text-2xl font-bold tracking-widest text-black">
-                ALDAY<span className="font-light">HEALTH</span>
-              </span>
-              <div className="hidden md:flex w-7 h-7 rounded-full border border-black items-center justify-center font-serif font-bold text-sm text-black">
-                A
-              </div>
+              <img 
+                src={logo} 
+                alt="Alday Health Logo" 
+                className="h-8 md:h-10 object-contain" 
+              />
             </Link>
 
             {/* Desktop Links (Center) */}
             <div className="hidden lg:flex items-center h-full">
+              <div className="h-full flex items-center px-5 group/item cursor-pointer">
+                <Link to="/" className="text-xs font-bold text-gray-800 uppercase tracking-[0.15em] group-hover/item:text-[#C5A059] transition-colors relative">
+                  HOME
+                  <span className="absolute bottom-[-4px] left-0 w-0 h-[2px] bg-[#C5A059] transition-all duration-300 group-hover/item:w-full"></span>
+                </Link>
+              </div>
               <div className="h-full flex items-center px-5 group/item cursor-pointer">
                 <Link to="/view-all" className="text-xs font-bold text-gray-800 uppercase tracking-[0.15em] group-hover/item:text-[#C5A059] transition-colors relative">
                   SHOP ALL
@@ -144,7 +145,7 @@ const Navbar = () => {
 
                   {/* MEGA MENU DROPDOWN */}
                   {activeMenu === item && megaMenuData[item] && !isSearchOpen && (
-                    <div className="fixed top-[115px] left-0 w-full bg-white shadow-xl border-t border-gray-100 py-12 animate-fade-in cursor-default" style={{ zIndex: 60 }}>
+                    <div className="fixed top-[80px] left-0 w-full bg-white shadow-xl border-t border-gray-100 py-12 animate-fade-in cursor-default" style={{ zIndex: 60 }}>
                       <div className="max-w-[1200px] mx-auto px-6 flex justify-between">
                         <div className="w-1/4">
                           <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Products</h4>
